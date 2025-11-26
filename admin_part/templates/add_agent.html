@@ -1,0 +1,151 @@
+{% extends 'admin_base.html' %}
+{% block content %}
+<!-- ✅ Toastify CSS and JS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+<style>
+  .section-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    padding: 25px 30px;
+    margin-bottom: 25px;
+  }
+  .section-title {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+  }
+  .section-title i {
+    font-size: 1.3rem;
+    margin-right: 8px;
+  }
+  .upload-box {
+    border: 2px dashed #d6d6d6;
+    border-radius: 10px;
+    padding: 25px;
+    text-align: center;
+    color: #888;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .upload-box:hover {
+    border-color: #0d6efd;
+    color: #0d6efd;
+  }
+  .upload-box i {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+  }
+</style>
+
+<div class="container py-4">
+  <h3 class="fw-bold mb-2">Add New Agent</h3>
+  <p class="text-muted mb-4">Fill in the agent’s details to onboard them quickly and efficiently.</p>
+
+  <form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- 🔹 Agent Personal Info -->
+    <div class="section-card">
+      <div class="section-title text-primary">
+        <i class="bi bi-person-circle"></i> Agent Personal Information
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Full Name <span class="text-danger">*</span></label>
+          <input type="text" name="full_name" class="form-control" placeholder="Enter full name" required />
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Contact Number <span class="text-danger">*</span></label>
+          <input type="text" name="phone_number" class="form-control" placeholder="Enter contact number" required />
+          <small class="text-muted">This will be used as the password.</small>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Email Address <span class="text-danger">*</span></label>
+          <input type="email" name="email" class="form-control" placeholder="Enter email address" required />
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Date of Birth</label>
+          <input type="date" name="dob" class="form-control" />
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Profile Photo</label>
+          <div class="upload-box">
+            <i class="bi bi-cloud-upload"></i>
+            <p class="mb-1">Upload Photo</p>
+            <input type="file" name="profile_image" class="form-control mt-2" style="border:none;box-shadow:none;" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🔹 Documents & Verification -->
+    <div class="section-card">
+      <div class="section-title text-warning">
+        <i class="bi bi-file-earmark-text"></i> Documents & Verification
+      </div>
+
+      <div class="row g-3">
+      
+        <div class="col-12">
+          <label class="form-label">Upload PAN Card</label>
+          <div class="upload-box">
+            <i class="bi bi-cloud-upload"></i>
+            <p class="mb-1">Upload PAN Card</p>
+            <small>PNG, JPG, PDF up to 10MB</small>
+            <input type="file" name="pan_card" class="form-control mt-2" style="border:none;box-shadow:none;" />
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Upload Aadhaar Card</label>
+          <div class="upload-box">
+            <i class="bi bi-cloud-upload"></i>
+            <p class="mb-1">Upload Aadhaar Card</p>
+            <small>PDF up to 10MB</small>
+            <input type="file" name="adhar_card" class="form-control mt-2" style="border:none;box-shadow:none;" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🔹 Submit -->
+    <div class="text-end mt-4">
+      <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold">
+        <i class="bi bi-plus-circle me-1"></i> Add Agent
+      </button>
+    </div>
+  </form>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    {% if messages %}
+      {% for message in messages %}
+        Toastify({
+          text: "{{ message }}",
+          duration: 4000,
+          gravity: "top", // top or bottom
+          position: "right", // left, center or right
+          backgroundColor:
+            "{% if message.tags == 'success' %}linear-gradient(to right, #00b09b, #96c93d){% elif message.tags == 'error' %}linear-gradient(to right, #ff5f6d, #ffc371){% else %}#333{% endif %}",
+          stopOnFocus: true,
+          close: true,
+          className: "custom-toast"
+        }).showToast();
+      {% endfor %}
+    {% endif %}
+  });
+</script>
+
+<!-- Bootstrap Icons (if not already included) -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock %}

@@ -1,0 +1,106 @@
+
+  .action-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;         /* rounded-square style */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none !important;     /* remove outline borders */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    font-size: 1.1rem;
+}
+
+.action-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+
+  .marketing-tools-page .toggle-btn {
+    transition: all 0.3s ease;
+    font-weight: 500;
+  }
+  
+  .marketing-tools-page .toggle-btn.active {
+    box-shadow: 0 4px 12px rgba(78, 115, 223, 0.3);
+  }
+  
+  .marketing-tools-page .toggle-btn:not(.active):hover {
+    background-color: rgba(78, 115, 223, 0.1);
+    border-color: #4e73df;
+    color: #4e73df;
+  }
+  
+  .marketing-tools-page .content-section {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .marketing-tools-page .brochure-card,
+  .marketing-tools-page .map-card {
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    background: linear-gradient(135deg, #ffffff 0%, #fafbff 100%);
+  }
+  
+  .marketing-tools-page .brochure-card:hover,
+  .marketing-tools-page .map-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
+    border-color: rgba(78, 115, 223, 0.2);
+  }
+  
+  .marketing-tools-page .brochure-card::before,
+  .marketing-tools-page .map-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #4e73df, #3a56c4);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+  }
+  
+  .marketing-tools-page .brochure-card:hover::before,
+  .marketing-tools-page .map-card:hover::before {
+    transform: scaleX(1);
+  }
+  
+  .marketing-tools-page .map-card::before {
+    background: linear-gradient(90deg, #1cc88a, #17a673);
+  }
+  
+  .marketing-tools-page .btn-group .btn {
+    flex: 1;
+    padding: 0.5rem;
+    transition: all 0.2s ease;
+  }
+  
+  .marketing-tools-page .btn-group .btn:hover {
+    transform: translateY(-1px);
+  }
+  
+  .marketing-tools-page .map-preview {
+    height: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f8fff8 0%, #f0f8f0 100%);
+  }
+  
+  .empty-state {
+    padding: 2rem;
+  }
+  
+  .empty-icon {
+    font-size: 4rem;
+  }

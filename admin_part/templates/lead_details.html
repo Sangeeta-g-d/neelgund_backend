@@ -1,0 +1,278 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% block content %}
+{% load tz %}
+
+<div class="container py-4">
+  <!-- Lead Header -->
+  <div class="card border-0 shadow rounded-4 mb-4">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center">
+        <h4 class="fw-bold text-primary mb-0">
+          <i class="bi bi-person-lines-fill me-2"></i>{{ lead.full_name }}
+        </h4>
+        <span class="badge 
+          {% if lead.status == 'new' %}bg-info
+          {% elif lead.status == 'in_progress' %}bg-warning
+          {% elif lead.status == 'closed' %}bg-success
+          {% elif lead.status == 'cancelled' %}bg-danger{% endif %}
+          px-3 py-2">
+          {{ lead.get_status_display }}
+        </span>
+      </div>
+      <hr>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <p class="mb-1 text-muted">📞 Contact:</p>
+          <h6>{{ lead.contact_number }}</h6>
+        </div>
+        <div class="col-md-4">
+          <p class="mb-1 text-muted">📧 Email:</p>
+          <h6>{{ lead.email|default:"N/A" }}</h6>
+        </div>
+        <div class="col-md-4">
+          <p class="mb-1 text-muted">🏙 City:</p>
+          <h6>{{ lead.city|default:"N/A" }}</h6>
+        </div>
+        <div class="col-md-4">
+          <p class="mb-1 text-muted">💰 Budget:</p>
+          <h6>₹{{ lead.budget|default:"0.00" }}</h6>
+        </div>
+        <div class="col-md-4">
+          <p class="mb-1 text-muted">📍 Preferred Location:</p>
+          <h6>{{ lead.preferred_location|default:"N/A" }}</h6>
+        </div>
+        <div class="col-md-12">
+          <p class="mb-1 text-muted">📝 Notes:</p>
+          <p class="mb-0">{{ lead.notes|default:"No additional notes" }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Associated Projects -->
+  {% for lead_project in lead_projects %}
+  <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+      <h5 class="mb-0 fw-bold text-secondary">
+        <i class="bi bi-building-check me-2"></i>{{ lead_project.project.project_name }}
+      </h5>
+      <span class="badge 
+        {% if lead_project.status == 'interested' %}bg-info
+        {% elif lead_project.status == 'visited' %}bg-primary
+        {% elif lead_project.status == 'in_progress' %}bg-warning
+        {% elif lead_project.status == 'closed' %}bg-success
+        {% elif lead_project.status == 'cancelled' %}bg-danger{% endif %}
+        px-3 py-2">
+        {{ lead_project.get_status_display }}
+      </span>
+    </div>
+    <div class="card-body">
+      {% if lead_project.assigned_plots.all %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+  <tr>
+    <th>Assignment ID</th>
+    <th>Plot No</th>
+    <th>Plot Area</th>
+    <th>Status</th>
+    <th>Remarks</th>
+    <th>Assigned By</th>
+    <th>Assigned At</th>
+    <th>Details</th>
+    <th>Action</th>
+  </tr>
+</thead>
+<tbody>
+  {% for assignment in lead_project.assigned_plots.all %}
+  <tr>
+    <td>{{ assignment.id }}</td>
+    <td>{{ assignment.plot.plot_no }}</td>
+    <td>{{ assignment.plot.area }} sq.ft</td>
+    <td>
+      <span class="badge 
+        {% if assignment.status == 'booked' %}bg-warning
+        {% elif assignment.status == 'closed' %}bg-success
+        {% elif assignment.status == 'cancelled' %}bg-danger{% endif %}">
+        {{ assignment.get_status_display }}
+      </span>
+    </td>
+    <td>{{ assignment.remarks|default:"-" }}</td>
+    <td>{{ assignment.assigned_by.full_name }}</td>
+    <td>{{ assignment.assigned_at|localtime|date:"d M Y, h:i A" }}</td>
+    <td>
+      <a href="/lead-plot-details/{{assignment.id}}/" class="btn btn-outline-primary">View Details</a>
+    </td>
+    <td>
+     <button 
+  class="btn btn-sm btn-outline-primary"
+  data-bs-toggle="modal"
+  data-bs-target="#editPlotModal"
+  data-assignment-id="{{ assignment.id }}"
+  data-plot-id="{{ assignment.plot.id }}"
+  data-lead-project-id="{{ lead_project.id }}"  
+  data-current-status="{{ assignment.status }}"
+  data-remarks="{{ assignment.remarks|default:'' }}"
+>
+  <i class="bi bi-pencil-square"></i> Edit
+</button>
+
+    </td>
+  </tr>
+  {% endfor %}
+</tbody>
+
+
+
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted mb-0">No plots assigned yet for this project.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+
+<!-- Edit Plot Modal -->
+<div class="modal fade" id="editPlotModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold">Edit Plot Status</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editPlotForm">
+          <input type="hidden" id="leadProjectId">
+          <input type="hidden" id="plotId">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Status</label>
+            <select class="form-select" id="plotStatus" required>
+              <option value="">Select status</option>
+              <option value="booked">Booked</option>
+              <option value="closed">Closed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Remarks</label>
+            <textarea id="plotRemarks" class="form-control" rows="3" placeholder="Enter remarks..."></textarea>
+          </div>
+
+          <div class="text-end">
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-save me-1"></i> Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" />
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const editModal = document.getElementById("editPlotModal");
+  const form = document.getElementById("editPlotForm");
+
+  editModal.addEventListener("show.bs.modal", (event) => {
+    const button = event.relatedTarget;
+    const plotId = button.getAttribute("data-plot-id");
+    const currentStatus = button.getAttribute("data-current-status");
+    const remarks = button.getAttribute("data-remarks");
+    const leadProjectId = button.getAttribute("data-lead-project-id");
+
+    document.getElementById("plotId").value = plotId;
+    document.getElementById("leadProjectId").value = leadProjectId;
+    document.getElementById("plotStatus").value = currentStatus;
+    document.getElementById("plotRemarks").value = remarks;
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const leadProjectId = document.getElementById("leadProjectId").value;
+    const plotId = document.getElementById("plotId").value;
+    const status = document.getElementById("plotStatus").value;
+    const remarks = document.getElementById("plotRemarks").value;
+
+    try {
+      const response = await fetch(`/api/agents/update-plot-status/${leadProjectId}/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+        body: JSON.stringify({
+          plot_ids: [parseInt(plotId)],
+          status: status,
+          remarks: remarks
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Toastify({
+          text: data.message || "Plot updated successfully!",
+          duration: 5000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "#28a745"
+        }).showToast();
+
+        // Reload the page or dynamically update row
+        setTimeout(() => location.reload(), 4000);
+      } else {
+        Toastify({
+          text: data.message || "Failed to update plot!",
+          duration: 5000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "#dc3545"
+        }).showToast();
+      }
+
+      const modal = bootstrap.Modal.getInstance(editModal);
+      modal.hide();
+
+    } catch (error) {
+      Toastify({
+        text: "An unexpected error occurred.",
+        duration: 5000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "#dc3545"
+      }).showToast();
+    }
+  });
+
+  // Helper: Get CSRF token
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+});
+</script>
+
+
+{% endblock %}

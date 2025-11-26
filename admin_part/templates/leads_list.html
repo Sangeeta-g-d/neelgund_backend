@@ -1,0 +1,313 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% block content %}
+
+<div class="container-fluid py-4 leads-page">
+
+  <!-- Page header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h2 class="h4 mb-1 fw-bold text-dark">Lead Management</h2>
+      <p class="text-muted mb-0">Track, filter and action every lead seamlessly</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-primary rounded-3" id="exportBtn">
+        <i class="bi bi-download me-2"></i> Export
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-xl-3 col-md-6">
+      <div class="card stat-card border-0 shadow-sm rounded-4 total-card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <p class="text-muted mb-1">Total Leads</p>
+              <h3 class="fw-bold mb-0" id="totalLeads">{{ leads|length }}</h3>
+            </div>
+            <span class="stat-icon bg-primary bg-opacity-10 text-primary rounded-4">
+              <i class="bi bi-people"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+      <div class="card stat-card border-0 shadow-sm rounded-4 new-card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <p class="text-muted mb-1">New Leads</p>
+              <h3 class="fw-bold mb-0" id="newLeads">0</h3>
+            </div>
+            <span class="stat-icon bg-info bg-opacity-10 text-info rounded-4">
+              <i class="bi bi-lightning"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+      <div class="card stat-card border-0 shadow-sm rounded-4 progress-card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <p class="text-muted mb-1">In Progress</p>
+              <h3 class="fw-bold mb-0" id="inProgressLeads">0</h3>
+            </div>
+            <span class="stat-icon bg-warning bg-opacity-10 text-warning rounded-4">
+              <i class="bi bi-activity"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+      <div class="card stat-card border-0 shadow-sm rounded-4 closed-card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <p class="text-muted mb-1">Closed Leads</p>
+              <h3 class="fw-bold mb-0" id="closedLeads">0</h3>
+            </div>
+              <span class="stat-icon bg-success bg-opacity-10 text-success rounded-4">
+                <i class="bi bi-check2-circle"></i>
+              </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-4">
+      <div class="row g-3">
+        <div class="col-xl-4 col-lg-5">
+          <div class="position-relative">
+            <i class="bi bi-search search-icon"></i>
+            <input type="text" id="searchInput" class="form-control form-control-lg ps-5 rounded-3"
+                   placeholder="Search by name, city, contact or agent">
+          </div>
+        </div>
+        <div class="col-md-4 col-lg-3">
+          <select id="statusFilter" class="form-select form-select-lg rounded-3">
+            <option value="all">All Status</option>
+            <option value="new">New</option>
+            <option value="in_progress">In Progress</option>
+            <option value="closed">Closed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+    
+        <div class="col-md-4 col-lg-2">
+          <select class="form-select form-select-lg rounded-3" id="recordsPerPage">
+            <option value="10" selected>Show 10</option>
+            <option value="25">Show 25</option>
+            <option value="50">Show 50</option>
+            <option value="100">Show 100</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leads table -->
+  <div class="card border-0 shadow-sm rounded-4">
+    <div class="card-header bg-transparent border-0 px-4 pt-4 pb-2">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-people text-primary fs-4"></i>
+        <div>
+          <h5 class="mb-0 fw-bold">All Leads</h5>
+          <small class="text-muted">Smart filters, instant search and quick actions</small>
+        </div>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive rounded-bottom-4">
+        <table class="table table-hover align-middle mb-0 leads-table">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-4">Lead</th>
+              <th>City</th>
+              <th>Budget</th>
+              <th>Assigned Projects</th>
+              <th>Status</th>
+              <th>Agent</th>
+              <th>Created</th>
+              <th class="pe-4 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="leadsTableBody">
+            {% if leads %}
+              {% for lead in leads %}
+                <tr class="lead-row"
+                    id="lead-row-{{ lead.id }}"
+                    data-name="{{ lead.full_name|lower }}"
+                    data-email="{{ lead.email|default:''|lower }}"
+                    data-phone="{{ lead.contact_number|default:''|lower }}"
+                    data-city="{{ lead.city|default:''|lower }}"
+                    data-status="{{ lead.status|default:'new' }}"
+                    data-agent="{{ lead.agent.full_name|default:''|lower }}"
+                    data-budget="{{ lead.budget|default:0 }}"
+                    data-date="{{ lead.created_at|date:'U' }}">
+                  <td class="ps-4">
+                    <div class="d-flex align-items-center gap-3">
+                      <div class="lead-avatar bg-primary bg-opacity-10 text-primary rounded-circle">
+                        <span class="fw-bold">{{ lead.full_name|first|upper }}</span>
+                      </div>
+                      <div>
+                        <h6 class="mb-1 fw-semibold text-dark">{{ lead.full_name }}</h6>
+                        <div class="text-muted small">
+                          <span>{{ lead.email|default:"—" }}</span><br>
+                          <span>{{ lead.contact_number|default:"—" }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="text-muted text-capitalize">{{ lead.city|default:"—" }}</td>
+                  <td class="fw-semibold">
+                    {% if lead.budget %}
+                      ₹{{ lead.budget|floatformat:2 }}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if lead.projects.all %}
+                      {% for project in lead.projects.all %}
+                        <span class="badge bg-light text-dark border border-secondary-subtle rounded-pill me-1 mb-1">
+                          <i class="bi bi-building text-primary me-1"></i>{{ project.project_name }}
+                        </span>
+                      {% empty %}
+                        <span class="text-muted">—</span>
+                      {% endfor %}
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if lead.status == "new" %}
+                      <span class="badge rounded-pill bg-info bg-opacity-10 text-info border border-info border-opacity-25">New</span>
+                    {% elif lead.status == "in_progress" %}
+                      <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">In Progress</span>
+                    {% elif lead.status == "closed" %}
+                      <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25">Closed</span>
+                    {% else %}
+                      <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25">
+                        {{ lead.get_status_display }}
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if lead.agent %}
+                      <span class="fw-semibold text-dark">
+                        <i class="bi bi-person-badge text-primary me-1"></i>{{ lead.agent.full_name }}
+                      </span>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="text-muted small">
+                      <div>{{ lead.created_at|date:"d M Y" }}</div>
+                      <small>{{ lead.created_at|date:"h:i A" }}</small>
+                    </div>
+                  </td>
+                  <td class="pe-4 text-center">
+                    <div class="d-flex justify-content-center gap-2">
+                      <a class="btn btn-sm btn-outline-primary rounded-3" href="{% url 'lead_details' lead.id %}" title="View Lead">
+                        <i class="bi bi-eye"></i>
+                      </a>
+                      <button class="btn btn-sm btn-outline-danger rounded-3 delete-lead-btn"
+                              data-lead-id="{{ lead.id }}" title="Delete Lead">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            {% endif %}
+            <tr id="noLeadsRow" class="{% if leads %}d-none{% endif %}">
+              <td colspan="8" class="text-center py-5 text-muted">
+                <i class="bi bi-people fs-1 d-block mb-3 opacity-25"></i>
+                <h5 class="text-muted">No leads found</h5>
+                <p class="mb-0">Try adjusting your filters or importing new leads.</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 px-4 py-3 border-top">
+        <div class="text-muted small">
+          Showing <strong id="showingCount">0</strong> of <strong id="totalCount">{{ leads|length }}</strong> leads
+        </div>
+        <nav>
+          <ul class="pagination mb-0" id="pagination"></ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+<style>
+  .leads-page .stat-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .leads-page .stat-card:hover {
+    transform: translateY(-3px);
+  }
+  .leads-page .total-card { background: linear-gradient(135deg, #eef2ff, #e0ecff); }
+  .leads-page .new-card { background: linear-gradient(135deg, #e7f7ff, #d8f2ff); }
+  .leads-page .progress-card { background: linear-gradient(135deg, #fff7e5, #ffeccc); }
+  .leads-page .closed-card { background: linear-gradient(135deg, #e8fdf4, #d3f8e5); }
+  .leads-page .stat-icon {
+    width: 48px;
+    height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+  }
+  .leads-table tbody tr {
+    transition: background-color 0.2s ease, transform 0.2s ease;
+  }
+  .leads-table tbody tr:hover {
+    background-color: rgba(78, 115, 223, 0.05);
+    transform: translateY(-1px);
+  }
+  .leads-page .lead-avatar {
+    width: 46px;
+    height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .leads-page .search-icon {
+    position: absolute;
+    top: 50%;
+    left: 16px;
+    transform: translateY(-50%);
+    color: #94a3b8;
+  }
+  #pagination .page-link {
+    border: none;
+    border-radius: 10px;
+    color: #4e73df;
+  }
+  #pagination .page-item.active .page-link {
+    background-color: #4e73df;
+    color: #fff;
+  }
+  .hidden {
+    display: none !important;
+  }
+</style>
+
+<script src="{% static 'assets/js/leads_list.js' %}"></script>
+
+{% endblock %}

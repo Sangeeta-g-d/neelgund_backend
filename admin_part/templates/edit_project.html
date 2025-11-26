@@ -1,0 +1,360 @@
+{% extends 'admin_base.html' %}
+{% block content %}
+<div class="container-fluid">
+    <!-- Back Button -->
+    <a href="{% url 'projects' %}" class="btn btn-outline-primary btn-sm mb-3">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+
+    <h3 class="mb-4">Edit Real Estate Project: {{ project.project_name }}</h3>
+
+    <form method="POST" enctype="multipart/form-data" id="projectForm">
+        {% csrf_token %}
+
+        <!-- 1️⃣ Basic Project Info -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">Basic Project Information</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Project ID</label>
+                        <input type="text" name="project_id" class="form-control" required
+                               value="{{ project.project_id }}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Project Name</label>
+                        <input type="text" name="project_name" class="form-control" required
+                               value="{{ project.project_name }}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Location</label>
+                        <input type="text" name="location" class="form-control" required
+                               value="{{ project.location }}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Project Type</label>
+                        <select name="project_type" class="form-control" required>
+                            {% for key, val in project.PROJECT_TYPE_CHOICES %}
+                            <option value="{{ key }}" {% if project.project_type == key %}selected{% endif %}>{{ val }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" rows="3">{{ project.description }}</textarea>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Total Plots</label>
+                        <input type="number" name="total_plots" class="form-control" value="{{ project.total_plots }}">
+                    </div>
+                   <div class="col-md-6 mb-3">
+    <label class="form-label">Status</label>
+    <select name="status" class="form-control" required>
+        {% for key, val in project.STATUS_CHOICES %}
+        <option value="{{ key }}" {% if project.status == key %}selected{% endif %}>{{ val }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- 2️⃣ Project Media -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">Project Media</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Banner Image</label>
+                        <input type="file" name="banner_image" class="form-control">
+                        {% if project.banner_image %}
+                        <img src="{{ project.banner_image.url }}" alt="" width="100" class="mt-1">
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Brochure (PDF)</label>
+                        <input type="file" name="brochure" class="form-control">
+                        {% if project.brochure %}
+                        <a href="{{ project.brochure.url }}" target="_blank">View Current</a>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Map Layout</label>
+                        <input type="file" name="map_layout" class="form-control">
+                        {% if project.map_layout %}
+                        <img src="{{ project.map_layout.url }}" alt="" width="100" class="mt-1">
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3️⃣ Amenities -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">Amenities</div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    {% for amenity in amenities %}
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" name="amenities" value="{{ amenity.id }}"
+                               id="amenity{{ amenity.id }}"
+                               {% if amenity in project.amenities.all %}checked{% endif %}>
+                        <label class="form-check-label" for="amenity{{ amenity.id }}">
+                            {% if amenity.icon %}
+                            <img src="{{ amenity.icon.url }}" alt="{{ amenity.name }}" width="24" class="me-1">
+                            {% endif %}
+                            {{ amenity.name }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 4️⃣ Key Highlights -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">Key Highlights</div>
+            <div class="card-body" id="highlightsContainer">
+                <!-- Highlight template (hidden) -->
+                <div class="row mb-2 highlight-row d-none" id="highlightRowTemplate">
+                    <input type="hidden" name="highlight_id[]" value="">
+                    <div class="col-md-5 mb-2">
+                        <input type="text" name="highlight_title[]" class="form-control" placeholder="Title">
+                    </div>
+                    <div class="col-md-5 mb-2">
+                        <input type="text" name="highlight_subtitle[]" class="form-control" placeholder="Subtitle">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <button type="button" class="btn btn-outline-danger removeHighlightBtn">Remove</button>
+                    </div>
+                </div>
+
+                {% for highlight in project.highlights.all %}
+                <div class="row mb-2 highlight-row">
+                    <input type="hidden" name="highlight_id[]" value="{{ highlight.id }}">
+                    <div class="col-md-5 mb-2">
+                        <input type="text" name="highlight_title[]" class="form-control" placeholder="Title"
+                               value="{{ highlight.title }}">
+                    </div>
+                    <div class="col-md-5 mb-2">
+                        <input type="text" name="highlight_subtitle[]" class="form-control" placeholder="Subtitle"
+                               value="{{ highlight.subtitle }}">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <button type="button" class="btn btn-outline-danger removeHighlightBtn">Remove</button>
+                    </div>
+                </div>
+                {% endfor %}
+                <button type="button" id="addHighlightBtn" class="btn btn-sm btn-outline-primary mt-2">+ Add Highlight</button>
+            </div>
+        </div>
+        <!-- 6️⃣ Payment Phases -->
+<div class="card mb-4">
+  <div class="card-header bg-light">Payment Phases</div>
+  <div class="card-body" id="phasesContainer">
+
+    <!-- Hidden Template -->
+    <div class="row mb-2 phase-row d-none" id="phaseRowTemplate">
+      <input type="hidden" name="phase_id[]" value="">
+      <div class="col-md-4 mb-2">
+        <input type="text" name="phase_activity[]" class="form-control" placeholder="Activity (e.g. Booking)">
+      </div>
+      <div class="col-md-3 mb-2">
+        <input type="number" step="0.01" name="phase_percentage[]" class="form-control" placeholder="Payment %">
+      </div>
+      <div class="col-md-3 mb-2">
+        <select name="phase_due[]" class="form-select">
+          <option value="immediate">Immediate</option>
+          <option value="30_days">Within 30 Days</option>
+          <option value="60_days">Within 60 Days</option>
+          <option value="90_days">Within 90 Days</option>
+          <option value="120_days">Within 120 Days</option>
+          <option value="custom">Custom Duration</option>
+        </select>
+      </div>
+      <div class="col-md-2 mb-2 d-flex align-items-center">
+        <button type="button" class="btn btn-outline-danger removePhaseBtn">Remove</button>
+      </div>
+    </div>
+
+    {% for phase in project.payment_phases.all %}
+    <div class="row mb-2 phase-row">
+      <input type="hidden" name="phase_id[]" value="{{ phase.id }}">
+      <div class="col-md-4 mb-2">
+        <input type="text" name="phase_activity[]" class="form-control" placeholder="Activity" value="{{ phase.activity }}">
+      </div>
+      <div class="col-md-3 mb-2">
+        <input type="number" step="0.01" name="phase_percentage[]" class="form-control" placeholder="Payment %" value="{{ phase.payment_percentage }}">
+      </div>
+      <div class="col-md-3 mb-2">
+        <select name="phase_due[]" class="form-select">
+          <option value="immediate" {% if phase.due == 'immediate' %}selected{% endif %}>Immediate</option>
+          <option value="30_days" {% if phase.due == '30_days' %}selected{% endif %}>Within 30 Days</option>
+          <option value="60_days" {% if phase.due == '60_days' %}selected{% endif %}>Within 60 Days</option>
+          <option value="90_days" {% if phase.due == '90_days' %}selected{% endif %}>Within 90 Days</option>
+          <option value="120_days" {% if phase.due == '120_days' %}selected{% endif %}>Within 120 Days</option>
+          <option value="custom" {% if phase.due == 'custom' %}selected{% endif %}>Custom Duration</option>
+        </select>
+      </div>
+      <div class="col-md-2 mb-2 d-flex align-items-center">
+        <button type="button" class="btn btn-outline-danger removePhaseBtn">Remove</button>
+      </div>
+    </div>
+    {% endfor %}
+
+    <button type="button" id="addPhaseBtn" class="btn btn-sm btn-outline-primary mt-2">+ Add Another Phase</button>
+  </div>
+</div>
+
+<!-- 7️⃣ Current Project Phase -->
+<div class="card mb-4">
+  <div class="card-header bg-light">Current Project Phase</div>
+  <div class="card-body">
+    <select name="current_phase" class="form-select">
+      <option value="">-- Select Current Phase --</option>
+      {% for phase in project.payment_phases.all %}
+      <option value="{{ phase.id }}" {% if project.current_phase and project.current_phase.id == phase.id %}selected{% endif %}>
+        {{ phase.activity }} ({{ phase.payment_percentage }}%)
+      </option>
+      {% endfor %}
+    </select>
+    <small class="text-muted">Select the current ongoing payment phase for this project.</small>
+  </div>
+</div>
+
+        <!-- 5️⃣ Plots -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">Plots</div>
+            <div class="card-body" id="plotsContainer">
+                <!-- Plot template (hidden) -->
+                <div class="row mb-2 plot-row d-none" id="plotRowTemplate">
+                    <input type="hidden" name="plot_id[]" value="">
+                    <div class="col-md-3 mb-2">
+                        <input type="text" name="plot_no[]" class="form-control" placeholder="Plot No">
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <input type="text" name="size[]" class="form-control" placeholder="Size">
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <input type="number" step="0.01" name="area_sq[]" class="form-control" placeholder="Area">
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <input type="text" name="price[]" class="form-control" placeholder="Price">
+                        <button type="button" class="btn btn-outline-danger removePlotBtn mt-1">Remove</button>
+                    </div>
+                </div>
+
+                {% for plot in project.plots.all %}
+                <div class="row mb-2 plot-row">
+                    <input type="hidden" name="plot_id[]" value="{{ plot.id }}">
+                    <div class="col-md-3 mb-2">
+                        <input type="text" name="plot_no[]" class="form-control" placeholder="Plot No"
+                               value="{{ plot.plot_no }}">
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <input type="text" name="size[]" class="form-control" placeholder="Size"
+                               value="{{ plot.size }}">
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <input type="number" step="0.01" name="area_sq[]" class="form-control" placeholder="Area"
+                               value="{{ plot.area_sq }}">
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <input type="text" name="price[]" class="form-control" placeholder="Price"
+                               value="{{ plot.price }}">
+                        <button type="button" class="btn btn-outline-danger removePlotBtn mt-1">Remove</button>
+                    </div>
+                </div>
+                {% endfor %}
+                <button type="button" id="addPlotBtn" class="btn btn-sm btn-outline-primary mt-2">+ Add Plot</button>
+            </div>
+        </div>
+
+
+        <!-- 6️⃣ Commission -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">Commission</div>
+            <div class="card-body">
+                <input type="number" name="commission_percentage" class="form-control"
+                       value="{{ project.commission_percentage }}" step="0.01">
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-success mb-4">Update Project</button>
+    </form>
+</div>
+
+<script>
+// Add/remove plot rows
+document.getElementById('addPlotBtn').addEventListener('click', function() {
+    let container = document.getElementById('plotsContainer');
+    let template = document.getElementById('plotRowTemplate');
+    let row = template.cloneNode(true);
+    row.id = "";
+    row.classList.remove('d-none');
+    row.querySelectorAll('input').forEach(input => input.value = '');
+    container.appendChild(row);
+});
+document.getElementById('plotsContainer').addEventListener('click', function(e) {
+    if (e.target.classList.contains('removePlotBtn')) {
+        e.target.closest('.plot-row').remove();
+    }
+});
+
+// Add/remove highlight rows
+document.getElementById('addHighlightBtn').addEventListener('click', function() {
+    let container = document.getElementById('highlightsContainer');
+    let template = document.getElementById('highlightRowTemplate');
+    let row = template.cloneNode(true);
+    row.id = "";
+    row.classList.remove('d-none');
+    row.querySelectorAll('input').forEach(input => input.value = '');
+    container.appendChild(row);
+});
+document.getElementById('highlightsContainer').addEventListener('click', function(e) {
+    if (e.target.classList.contains('removeHighlightBtn')) {
+        e.target.closest('.highlight-row').remove();
+    }
+});
+
+document.getElementById('addPhaseBtn').addEventListener('click', function() {
+    let container = document.getElementById('phasesContainer');
+    let template = document.getElementById('phaseRowTemplate');
+    let row = template.cloneNode(true);
+    row.id = "";
+    row.classList.remove('d-none');
+
+    // Clear values
+    row.querySelectorAll('input').forEach(input => input.value = '');
+    row.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+
+    container.appendChild(row);
+});
+
+document.getElementById('phasesContainer').addEventListener('click', function(e) {
+    if (e.target.classList.contains('removePhaseBtn')) {
+        let rows = document.querySelectorAll('.phase-row');
+        if (rows.length > 1) {
+            e.target.closest('.phase-row').remove();
+        } else {
+            alert("At least one payment phase is required.");
+        }
+    }
+});
+</script>
+
+{% if toast_message %}
+<script>
+Toastify({
+    text: "{{ toast_message }}",
+    duration: 3000,
+    gravity: "top",
+    position: "right",
+    close: true,
+    backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+}).showToast();
+</script>
+{% endif %}
+
+{% endblock %}

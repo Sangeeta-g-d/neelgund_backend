@@ -1,0 +1,301 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% block content %}
+<div class="container-fluid py-4">
+
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="h4 mb-1 fw-bold text-dark">Agents Management</h2>
+      <p class="text-muted mb-0">Manage and monitor all registered agents</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-primary rounded-3" id="exportBtn">
+        <i class="bi bi-download me-2"></i> Export
+      </button>
+      <a href="/add_agent/" class="btn btn-primary rounded-3">
+        <i class="bi bi-plus-circle me-2"></i> Add Agent
+      </a>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row g-3 mb-4">
+    <!-- Total Agents -->
+    <div class="col-xl-3 col-md-6">
+      <div class="card border-0 rounded-4 h-100 shadow-sm" style="background-color: #e8f0fe;">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-muted mb-2">Total Agents</h6>
+              <h3 class="fw-bold text-dark mb-0" id="totalAgents">{{ users|length }}</h3>
+            </div>
+            <div class="icon-wrapper bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+              <i class="bi bi-people text-primary fs-5"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Approved Agents -->
+    <div class="col-xl-3 col-md-6">
+      <div class="card border-0 rounded-4 h-100 shadow-sm" style="background-color: #e8f8f0;">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-muted mb-2">Approved Agents</h6>
+              <h3 class="fw-bold text-dark mb-0" id="approvedAgents">{{ approved_count }}</h3>
+            </div>
+            <div class="icon-wrapper bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+              <i class="bi bi-check-circle text-success fs-5"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Approval -->
+    <div class="col-xl-3 col-md-6">
+      <div class="card border-0 rounded-4 h-100 shadow-sm" style="background-color: #fff8e1;">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-muted mb-2">Pending Approval</h6>
+              <h3 class="fw-bold text-dark mb-0" id="pendingAgents">{{ pending_count }}</h3>
+            </div>
+            <div class="icon-wrapper bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+              <i class="bi bi-clock text-warning fs-5"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total Leads -->
+    <div class="col-xl-3 col-md-6">
+      <div class="card border-0 rounded-4 h-100 shadow-sm" style="background-color: #e6f7ff;">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-muted mb-2">Total Leads</h6>
+              <h3 class="fw-bold text-dark mb-0" id="totalLeads">{{ total_leads }}</h3>
+            </div>
+            <div class="icon-wrapper bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+              <i class="bi bi-graph-up text-info fs-5"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Agents Table -->
+  <div class="card shadow-sm border-0 rounded-4">
+    <div class="card-header bg-transparent border-0 py-3 px-4">
+      <h5 class="mb-0 fw-bold text-dark d-flex align-items-center">
+        <i class="bi bi-people text-primary me-2"></i> All Agents
+      </h5>
+    </div>
+    <div class="card-body p-0">
+      <!-- Search and Filter Bar -->
+      <div class="d-flex justify-content-between align-items-center p-4 border-bottom">
+        <div class="d-flex gap-2">
+          <div class="search-box position-relative">
+            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+            <input type="text" class="form-control rounded-3 ps-5" id="searchInput" placeholder="Search agents..." style="width: 300px;">
+          </div>
+          <select class="form-select rounded-3" id="statusFilter" style="width: 150px;">
+            <option value="all">All Status</option>
+            <option value="approved">Approved</option>
+            <option value="pending">Pending</option>
+          </select>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-muted small">Show:</span>
+          <select class="form-select rounded-3" id="recordsPerPage" style="width: 100px;">
+            <option value="10">10</option>
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-responsive rounded-4">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-4 py-3 fw-semibold text-dark">Agent</th>
+              <th class="py-3 fw-semibold text-dark">Contact</th>
+              <th class="py-3 fw-semibold text-dark">Registration Date</th>
+              <th class="py-3 fw-semibold text-dark">Leads</th>
+              <th class="py-3 fw-semibold text-dark">Status</th>
+              <th class="pe-4 py-3 fw-semibold text-dark text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="agentsTableBody">
+            {% for user in users %}
+            <tr class="border-top agent-row" 
+                data-name="{{ user.full_name|lower }}" 
+                data-email="{{ user.email|lower }}"
+                data-phone="{{ user.phone_number|default:'' }}"
+                data-status="{% if user.approved %}approved{% else %}pending{% endif %}"
+                data-date="{{ user.date_joined|date:'U' }}"
+                data-leads="{{ user.lead_count }}"
+                data-approved="{{ user.approved }}">
+              <td class="ps-4 py-3">
+                <div class="d-flex align-items-center">
+                  <div class="agent-avatar bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 45px; height: 45px;">
+                    <span class="fw-bold text-primary">{{ user.full_name|first|upper }}</span>
+                  </div>
+                  <div>
+                    <h6 class="mb-1 fw-semibold text-dark agent-name">{{ user.full_name }}</h6>
+                    <p class="text-muted small mb-0 agent-email">{{ user.email }}</p>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3">
+                {% if user.phone_number %}
+                  <div class="d-flex align-items-center text-muted">
+                    <i class="bi bi-telephone me-2"></i>
+                    <span class="agent-phone">{{ user.phone_number }}</span>
+                  </div>
+                {% else %}
+                  <span class="text-muted">Not provided</span>
+                {% endif %}
+              </td>
+              <td class="py-3">
+                <div class="text-muted">
+                  <div>{{ user.date_joined|date:"M d, Y" }}</div>
+                  <small class="text-muted">{{ user.date_joined|date:"h:i A" }}</small>
+                </div>
+              </td>
+              <td class="py-3">
+                <div class="d-flex align-items-center">
+                  <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-2">
+                    <i class="bi bi-graph-up me-1"></i> 
+                    <span class="lead-count">{{ user.lead_count }}</span> leads
+                  </span>
+                </div>
+              </td>
+              <td class="py-3">
+                {% if user.approved %}
+                  <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 agent-status">
+                    <i class="bi bi-check-circle me-1"></i> Approved
+                  </span>
+                {% else %}
+                  <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-3 py-2 agent-status">
+                    <i class="bi bi-clock me-1"></i> Pending
+                  </span>
+                {% endif %}
+              </td>
+              <td class="pe-4 py-3 text-center">
+                <div class="d-flex justify-content-center gap-2">
+                  <button class="btn btn-sm btn-outline-primary rounded-3 view-btn" 
+                    title="View Details"
+                    onclick="window.location.href='{% url 'agent_detail' user.id %}'">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                  {% if not user.approved %}
+                  <button class="btn btn-sm btn-outline-success rounded-3 approve-btn" data-bs-toggle="tooltip" title="Approve Agent" data-user-id="{{ user.id }}">
+                    <i class="bi bi-check-lg"></i>
+                  </button>
+                  {% else %}
+                  <button class="btn btn-sm btn-outline-secondary rounded-3" data-bs-toggle="tooltip" title="Already Approved" disabled>
+                    <i class="bi bi-check-lg"></i>
+                  </button>
+                  {% endif %}
+                
+                  <button class="btn btn-sm btn-outline-danger rounded-3 delete-btn" data-bs-toggle="tooltip" title="Delete Agent" data-user-id="{{ user.id }}">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr id="noAgentsRow">
+              <td colspan="6" class="text-center text-muted py-5">
+                <i class="bi bi-people fs-1 mb-3 opacity-25"></i>
+                <h5 class="text-muted">No agents found</h5>
+                <p class="mb-0">There are no agents registered in the system yet.</p>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="d-flex justify-content-between align-items-center p-4 border-top">
+        <div class="text-muted small">
+          Showing <strong id="showingCount">0</strong> of <strong id="totalCount">{{ users|length }}</strong> agents
+        </div>
+        <nav>
+          <ul class="pagination mb-0" id="pagination">
+            <!-- Pagination will be generated by JavaScript -->
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+<style>
+  .agent-avatar {
+    font-size: 1.1rem;
+  }
+  
+  .search-box .form-control:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+  }
+  
+  .table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+  }
+  
+  .badge {
+    font-weight: 500;
+    min-width: 100px;
+  }
+  
+  .btn-outline-primary:hover,
+  .btn-outline-success:hover,
+  .btn-outline-warning:hover,
+  .btn-outline-danger:hover {
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+  }
+  
+  .page-link {
+    margin: 0 2px;
+    border: none;
+  }
+  
+  .page-item.active .page-link {
+    background-color: #4e73df;
+    border-color: #4e73df;
+  }
+  
+  .card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .card:hover {
+    transform: translateY(-2px);
+  }
+  
+  .hidden {
+    display: none !important;
+  }
+</style>
+<script src="/static/assets/js/agent_list.js"></script>
+{% endblock %}

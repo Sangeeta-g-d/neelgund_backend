@@ -1,0 +1,100 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% load custom_filters %}
+{% block content %}
+    
+<div class="container py-4">
+  <div class="card shadow border-0 rounded-4 mb-4">
+    <div class="card-header bg-primary text-white">
+      <h4 class="mb-0">
+        <i class="bi bi-file-text me-2"></i>
+        Payment Phases for Plot {{ assignment.plot.plot_no }} ({{ project.project_name }})
+      </h4>
+    </div>
+    <div class="card-body">
+      <p><strong>Lead:</strong> {{ lead.full_name }} ({{ lead.contact_number }})</p>
+      <p><strong>Plot Price:</strong> ₹{{ plot_price|floatformat:2 }}</p>
+      <hr>
+
+      <form method="POST">
+        {% csrf_token %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Phase</th>
+                <th>Payment %</th>
+                <th>Auto Amount (₹)</th>
+                <th>Due</th>
+                <th>Remarks</th>
+                <th>Paid?</th>
+                <th>Next Balance (₹)</th> <!-- ✅ -->
+              </tr>
+            </thead>
+            <tbody>
+              {% for phase in phases %}
+              {% with existing_payments|get_item:phase.id as payment %}
+              <tr>
+                <td>{{ phase.activity }}</td>
+                <td>{{ phase.payment_percentage }}%</td>
+                <td>
+                  {% with calc=plot_price|mul:phase.payment_percentage|div:100 %}
+                    ₹{{ calc|floatformat:2 }}
+                  {% endwith %}
+                </td>
+                <td>{{ phase.get_due_display }}</td>
+                <td>
+                  <textarea 
+                    name="remarks_{{ phase.id }}" 
+                    class="form-control form-control-sm"
+                    rows="2"
+                    placeholder="Add remarks...">{{ payment.remarks|default_if_none:'' }}</textarea>
+                </td>
+                <td class="text-center">
+                  <input type="checkbox" 
+                         name="paid_{{ phase.id }}" 
+                         {% if payment and payment.paid %}checked{% endif %}>
+                </td>
+                <td class="text-end">
+                  ₹{{ phase_balance_dict|get_item:phase.id|floatformat:2 }}
+                </td>
+              </tr>
+              {% endwith %}
+              {% endfor %}
+            </tbody>
+           <tfoot class="table-light">
+  {% if next_phase %}
+<tr>
+  <th colspan="5" class="text-end">
+    Next Payment ({{ next_phase.activity }})
+    {% if current_phase %}
+      <small class="text-muted">[Current Phase: {{ current_phase.activity }}]</small>
+    {% endif %}
+  </th>
+  <th class="text-success">₹{{ next_payment_balance|floatformat:2 }}</th>
+</tr>
+{% endif %}
+  <tr>
+    <th colspan="5" class="text-end">Total Paid</th>
+    <th class="text-primary">₹{{ total_paid|floatformat:2 }}</th>
+  </tr>
+  <tr>
+    <th colspan="5" class="text-end">Total Balance</th>
+    <th class="text-danger">₹{{ total_balance|floatformat:2 }}</th>
+  </tr>
+</tfoot>
+
+          </table>
+        </div>
+
+        <div class="text-end mt-4">
+          <button type="submit" class="btn btn-success px-4">
+            <i class="bi bi-save me-1"></i> Save Updates
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

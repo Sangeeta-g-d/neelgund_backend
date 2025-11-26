@@ -1,0 +1,320 @@
+{% extends 'admin_base.html' %}
+{% block content %}
+<div class="container-fluid py-4">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="h4 mb-1 fw-bold text-dark">Agents Management</h2>
+      <p class="text-muted mb-0">Manage and monitor all registered agents</p>
+    </div>
+   
+  </div>
+
+    <form method="POST" enctype="multipart/form-data" id="projectForm">
+        {% csrf_token %}
+
+        <!-- 1️⃣ Basic Project Information -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                Basic Project Information
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Project ID</label>
+                        <input type="text" name="project_id" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Project Name</label>
+                        <input type="text" name="project_name" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Location</label>
+                        <input type="text" name="location" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Project Type</label>
+                        <select name="project_type" class="form-control" required>
+                            <option value="residential">Residential</option>
+                            <option value="commercial">Commercial</option>
+                            <option value="mixed">Mixed Use</option>
+                        </select>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Total Plots</label>
+                        <input type="number" name="total_plots" class="form-control">
+                    </div>
+                    <div class="col-md-6 mb-3">
+    <label class="form-label">Status</label>
+    <select name="status" class="form-control" required>
+        <option value="ready_to_move">Ready to Move</option>
+        <option value="under_construction">Under Construction</option>
+        <option value="upcoming" selected>Upcoming</option>
+        <option value="ongoing">Ongoing</option>
+    </select>
+</div>
+
+                </div>
+            </div>
+        </div>
+
+      <!-- 2️⃣ Project Media -->
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        Project Media
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <!-- Left Column -->
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Banner Image</label>
+                <input type="file" name="banner_image" class="form-control">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Brochure (PDF)</label>
+                <input type="file" name="brochure" class="form-control">
+            </div>
+
+            <!-- Right Column -->
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Map Layout</label>
+                <input type="file" name="map_layout" class="form-control">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Inventory Excel</label>
+                <input type="file" name="inventory_excel" class="form-control">
+            </div>
+        </div>
+    </div>
+</div>
+
+
+        <!-- 3️⃣ Inventory Setup -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                Inventory Setup (Manual Plots)
+            </div>
+            <div class="card-body">
+                <div id="plotsContainer">
+                    <div class="row mb-2 plot-row">
+                        <div class="col-md-3 mb-2">
+                            <input type="text" name="plot_no[]" class="form-control" placeholder="Plot No">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <input type="text" name="size[]" class="form-control" placeholder="Size (e.g. 30x40 ft)">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <input type="number" step="0.01" name="area_sq[]" class="form-control" placeholder="Area (sq ft)">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <input type="text" placeholder="80L" name="price[]" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <button type="button" id="addPlotBtn" class="btn btn-sm btn-outline-primary mt-2">+ Add Another Plot</button>
+            </div>
+        </div>
+<!-- 4️⃣ Key Highlights -->
+<div class="card mb-4">
+  <div class="card-header bg-light">
+    Key Highlights
+  </div>
+  <div class="card-body">
+    <div id="highlightsContainer">
+      <div class="row mb-2 highlight-row">
+        <div class="col-md-5 mb-2">
+          <input type="text" name="highlight_title[]" class="form-control" placeholder="Title (e.g. Prime Location)">
+        </div>
+        <div class="col-md-7 mb-2">
+          <input type="text" name="highlight_subtitle[]" class="form-control" placeholder="Subtitle (e.g. Near schools, hospitals, IT parks)">
+        </div>
+      </div>
+    </div>
+    <button type="button" id="addHighlightBtn" class="btn btn-sm btn-outline-primary mt-2">+ Add Another Highlight</button>
+  </div>
+</div>
+<!-- 5️⃣ Payment Phases -->
+<div class="card mb-4">
+  <div class="card-header bg-light">
+    Payment Phases
+  </div>
+  <div class="card-body">
+    <div id="phasesContainer">
+      <div class="row mb-2 phase-row">
+        <div class="col-md-4 mb-2">
+          <input type="text" name="phase_activity[]" class="form-control" placeholder="Activity (e.g. Booking)">
+        </div>
+        <div class="col-md-3 mb-2">
+          <input type="number" step="0.01" name="phase_percentage[]" class="form-control" placeholder="Payment %">
+        </div>
+        <div class="col-md-3 mb-2">
+          <select name="phase_due[]" class="form-select">
+            <option value="immediate">Immediate</option>
+            <option value="30_days">Within 30 Days</option>
+            <option value="60_days">Within 60 Days</option>
+            <option value="90_days">Within 90 Days</option>
+            <option value="120_days">Within 120 Days</option>
+            <option value="custom">Custom Duration</option>
+          </select>
+        </div>
+        <div class="col-md-2 mb-2 d-flex align-items-center">
+          <button type="button" class="btn btn-outline-danger btn-sm removePhaseBtn">Remove</button>
+        </div>
+      </div>
+    </div>
+    <button type="button" id="addPhaseBtn" class="btn btn-sm btn-outline-primary mt-2">+ Add Another Phase</button>
+  </div>
+</div>
+
+<!-- 6️⃣ Current Phase -->
+<div class="card mb-4">
+  <div class="card-header bg-light">
+    Current Phase
+  </div>
+  <div class="card-body">
+    <select name="current_phase_name" id="currentPhaseSelect" class="form-select">
+      <option value="">-- Select Current Phase --</option>
+    </select>
+    <small class="text-muted">This dropdown will populate based on entered payment phases.</small>
+  </div>
+</div>
+        <!-- 4️⃣ Amenities -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                Amenities
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    {% for amenity in amenities %}
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" name="amenities" value="{{ amenity.id }}" id="amenity{{ amenity.id }}">
+                        <label class="form-check-label" for="amenity{{ amenity.id }}">
+                            {% if amenity.icon %}
+                            <img src="{{ amenity.icon.url }}" alt="{{ amenity.name }}" width="24" class="me-1">
+                            {% endif %}
+                            {{ amenity.name }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 5️⃣ Commission -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                Commission
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Commission Percentage (%)</label>
+                    <input type="number" name="commission_percentage" class="form-control" step="0.01">
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary mb-4">Add Project</button>
+    </form>
+</div>
+<script>
+  // Dynamically populate Current Phase dropdown
+  function updateCurrentPhaseOptions() {
+    const phaseRows = document.querySelectorAll('.phase-row');
+    const select = document.getElementById('currentPhaseSelect');
+    select.innerHTML = '<option value="">-- Select Current Phase --</option>';
+    phaseRows.forEach(row => {
+      const activity = row.querySelector('input[name="phase_activity[]"]').value.trim();
+      if (activity) {
+        const opt = document.createElement('option');
+        opt.value = activity;
+        opt.textContent = activity;
+        select.appendChild(opt);
+      }
+    });
+  }
+
+  // Update when a phase is added or removed
+  document.getElementById('addPhaseBtn').addEventListener('click', updateCurrentPhaseOptions);
+  document.addEventListener('click', function(e) {
+    if (e.target && e.target.classList.contains('removePhaseBtn')) {
+      updateCurrentPhaseOptions();
+    }
+  });
+
+  // Also update as user types
+  document.addEventListener('input', function(e) {
+    if (e.target.name === 'phase_activity[]') updateCurrentPhaseOptions();
+  });
+</script>
+<script>
+document.getElementById('addPlotBtn').addEventListener('click', function() {
+    let container = document.getElementById('plotsContainer');
+    let row = document.querySelector('.plot-row').cloneNode(true);
+    row.querySelectorAll('input').forEach(input => input.value = '');
+    container.appendChild(row);
+});
+</script>
+<script>
+document.getElementById('addHighlightBtn').addEventListener('click', function() {
+    let container = document.getElementById('highlightsContainer');
+    let row = document.querySelector('.highlight-row').cloneNode(true);
+    row.querySelectorAll('input').forEach(input => input.value = '');
+    container.appendChild(row);
+});
+</script>
+<script>
+document.getElementById('addPhaseBtn').addEventListener('click', function() {
+    let container = document.getElementById('phasesContainer');
+    let firstRow = document.querySelector('.phase-row');
+
+    if (!firstRow) return;
+
+    // Clone the first phase row
+    let newRow = firstRow.cloneNode(true);
+
+    // Clear all input/select values
+    newRow.querySelectorAll('input').forEach(input => input.value = '');
+    newRow.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+
+    // Append the cloned row
+    container.appendChild(newRow);
+});
+
+// Remove phase row (ensure at least one remains)
+document.addEventListener('click', function(e) {
+    if (e.target && e.target.classList.contains('removePhaseBtn')) {
+        let rows = document.querySelectorAll('.phase-row');
+        if (rows.length > 1) {
+            e.target.closest('.phase-row').remove();
+        } else {
+            alert('At least one phase is required.');
+        }
+    }
+});
+</script>
+
+
+    <!-- ✅ Toastify Notification Script -->
+    {% if toast_message %}
+    <script>
+        const message = "{{ toast_message|escapejs }}";
+        const isError = message.includes("❌") || message.toLowerCase().includes("failed") || message.toLowerCase().includes("error");
+
+        Toastify({
+            text: message,
+            duration: 4000,
+            gravity: "top",
+            position: "right",
+            close: true,
+            stopOnFocus: true,
+            backgroundColor: isError
+                ? "linear-gradient(to right, #ff5f6d, #ffc371)"
+                : "linear-gradient(to right, #00b09b, #96c93d)",
+        }).showToast();
+    </script>
+    {% endif %}
+
+{% endblock %}

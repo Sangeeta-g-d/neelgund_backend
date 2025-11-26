@@ -1,0 +1,248 @@
+{% extends "admin_base.html" %}
+{% load tz %}
+{% block content %}
+{% load static %}
+<div class="container-fluid py-4 withdrawal-page">
+
+  <!-- Page Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h2 class="h4 mb-1 fw-bold text-dark">Withdrawal Requests</h2>
+      <p class="text-muted mb-0">Track and approve agent commission withdrawals</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-primary rounded-3" id="exportBtn">
+        <i class="bi bi-download me-2"></i> Export
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-xl-4 col-md-6">
+      <div class="card border-0 shadow-sm rounded-4 stat-card total-card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <p class="text-muted mb-1">Total Requests</p>
+              <h3 class="fw-bold mb-0" id="totalRequests">{{ total_requests }}</h3>
+            </div>
+            <span class="stat-icon text-primary bg-primary bg-opacity-10 rounded-4">
+              <i class="bi bi-cash-stack"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-4 col-md-6">
+      <div class="card border-0 shadow-sm rounded-4 stat-card pending-card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <p class="text-muted mb-1">Pending</p>
+              <h3 class="fw-bold mb-0" id="pendingRequests">{{ pending_requests }}</h3>
+            </div>
+            <span class="stat-icon text-warning bg-warning bg-opacity-10 rounded-4">
+              <i class="bi bi-hourglass-split"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-4 col-md-12">
+      <div class="card border-0 shadow-sm rounded-4 stat-card approved-card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <p class="text-muted mb-1">Approved</p>
+              <h3 class="fw-bold mb-0" id="approvedRequests">{{ approved_requests }}</h3>
+            </div>
+            <span class="stat-icon text-success bg-success bg-opacity-10 rounded-4">
+              <i class="bi bi-check2-circle"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card border-0 shadow-sm rounded-4">
+    <div class="card-header bg-transparent border-0 px-4 pt-4 pb-3">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-wallet2 text-primary fs-4"></i>
+          <div>
+            <h5 class="mb-0 fw-bold">Recent Requests</h5>
+            <small class="text-muted">Review and approve pending payouts</small>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+        <div class="position-relative flex-grow-1" style="min-width: 250px;">
+          <i class="bi bi-search search-icon"></i>
+          <input type="text" id="searchInput" class="form-control rounded-3 ps-5" placeholder="Search agent, project or amount">
+        </div>
+        <select class="form-select rounded-3" id="statusFilter" style="min-width: 160px;">
+          <option value="all">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+        </select>
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-muted small">Show:</span>
+          <select class="form-select rounded-3" id="recordsPerPage" style="width: 110px;">
+            <option value="10" selected>10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive rounded-bottom-4">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-4">#</th>
+              <th>Agent</th>
+              <th>Project</th>
+              <th>Amount (₹)</th>
+              <th>Status</th>
+              <th>Requested</th>
+              <th>Approved</th>
+              <th class="pe-4 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody id="withdrawalsTableBody">
+            {% if withdrawals %}
+              {% for w in withdrawals %}
+                <tr class="withdrawal-row"
+                    id="withdrawal-row-{{ w.id }}"
+                    data-agent="{{ w.commission.agent.full_name|lower }}"
+                    data-project="{{ w.commission.project.project_name|lower }}"
+                    data-status="{% if w.approved %}approved{% else %}pending{% endif %}"
+                    data-amount="{{ w.amount|default:0 }}"
+                    data-date="{{ w.requested_at|date:'U' }}">
+                  <td class="ps-4">{{ forloop.counter }}</td>
+                  <td>
+                    <div class="fw-semibold">{{ w.commission.agent.full_name }}</div>
+                    <small class="text-muted">{{ w.commission.agent.email }}</small>
+                  </td>
+                  <td class="text-muted text-capitalize">{{ w.commission.project.project_name }}</td>
+                  <td class="fw-semibold">₹{{ w.amount }}</td>
+                  <td>
+                    {% if w.approved %}
+                      <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25">
+                        Approved
+                      </span>
+                    {% else %}
+                      <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">
+                        Pending
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="text-muted small">
+                      <div>{{ w.requested_at|timezone:"Asia/Kolkata"|date:"d M Y" }}</div>
+                      <small>{{ w.requested_at|timezone:"Asia/Kolkata"|date:"h:i A" }}</small>
+                    </div>
+                  </td>
+                  <td>
+                    {% if w.approved_at %}
+                      <div class="text-muted small">
+                        <div>{{ w.approved_at|timezone:"Asia/Kolkata"|date:"d M Y" }}</div>
+                        <small>{{ w.approved_at|timezone:"Asia/Kolkata"|date:"h:i A" }}</small>
+                      </div>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-center pe-4">
+                    {% if not w.approved %}
+                      <form method="POST" action="{% url 'approve_withdrawal' w.id %}" class="d-inline-block">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-success rounded-3">
+                          <i class="bi bi-check2-circle me-1"></i>Approve
+                        </button>
+                      </form>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            {% endif %}
+            <tr id="noRequestsRow" class="{% if withdrawals %}d-none{% endif %}">
+              <td colspan="8" class="text-center py-5 text-muted">
+                <i class="bi bi-wallet2 fs-1 d-block mb-3 opacity-25"></i>
+                <h5>No withdrawal requests found</h5>
+                <p class="mb-0">New requests will appear here for review.</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 px-4 py-3 border-top">
+        <div class="text-muted small">
+          Showing <strong id="showingCount">0</strong> of <strong id="totalCount">{{ total_requests }}</strong> requests
+        </div>
+        <nav>
+          <ul class="pagination mb-0" id="pagination"></ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+<style>
+  .withdrawal-page .stat-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .withdrawal-page .stat-card:hover {
+    transform: translateY(-3px);
+  }
+  .withdrawal-page .total-card { background: linear-gradient(135deg, #eef2ff, #e0ecff); }
+  .withdrawal-page .pending-card { background: linear-gradient(135deg, #fff7e5, #ffeccc); }
+  .withdrawal-page .approved-card { background: linear-gradient(135deg, #e8fdf4, #d3f8e5); }
+  .withdrawal-page .stat-icon {
+    width: 48px;
+    height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+  }
+  .withdrawal-page table tbody tr {
+    transition: background-color 0.2s ease, transform 0.2s ease;
+  }
+  .withdrawal-page table tbody tr:hover {
+    background-color: rgba(78, 115, 223, 0.05);
+    transform: translateY(-1px);
+  }
+  .withdrawal-page .search-icon {
+    position: absolute;
+    top: 50%;
+    left: 14px;
+    transform: translateY(-50%);
+    color: #94a3b8;
+  }
+  #pagination .page-link {
+    border: none;
+    border-radius: 10px;
+    color: #4e73df;
+  }
+  #pagination .page-item.active .page-link {
+    background-color: #4e73df;
+    color: #fff;
+  }
+  .hidden {
+    display: none !important;
+  }
+</style>
+
+<script src="{% static 'assets/js/withdrawals_list.js' %}"></script>
+
+{% endblock %}
