@@ -32,5 +32,6 @@ urlpatterns = [
     path('marketing_tools/',views.marketing_tools,name="marketing_tools"),
     path('projects/<int:project_id>/delete-brochure/', views.delete_project_brochure, name='delete_project_brochure'),
     path('projects/<int:project_id>/delete-map-layout/', views.delete_project_map_layout, name='delete_project_map_layout'),
+    path('logout/', views.logout_view, name='logout'),
 
 ]

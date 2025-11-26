@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login,logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -804,3 +804,6 @@ def add_agent(request):
     return render(request, "add_agent.html")
 
 
+def logout_view(request):
+    logout(request)
+    return redirect('/')
