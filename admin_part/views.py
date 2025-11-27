@@ -26,8 +26,11 @@ from pytz import timezone as pytz_timezone
 from agents.models import LeadPlotPayment,LeadPlotAssignment,CommissionWithdrawal
 from decimal import Decimal, ROUND_HALF_UP
 from agents.models import AgentCommission
+from .utils import login_required_nocache   
 
 def admin_login(request):
+    if request.user.is_authenticated:
+        return redirect("/admin_dashboard/")
     toast_message = None
     toast_type = "error"  # default type
     redirect_url = None
@@ -63,6 +66,7 @@ def admin_login(request):
         "redirect_url": redirect_url
     })
 
+@login_required_nocache
 def admin_dashboard(request):
     # Summary counts
     projects_count = RealEstateProject.objects.count()
@@ -96,6 +100,7 @@ def admin_dashboard(request):
 
     return render(request, 'admin_dashboard.html', context)
 
+
 @method_decorator(csrf_exempt, name='dispatch')
 class AddAmenityView(View):
     def post(self, request):
@@ -118,6 +123,7 @@ class AddAmenityView(View):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
         
+@login_required_nocache
 def add_project(request):
     amenities = Amenity.objects.all()
     toast_message = None
@@ -253,11 +259,12 @@ def add_project(request):
 
     return render(request, 'add_project.html', {'amenities': amenities})
 
-
+@login_required_nocache
 def projects(request):
     projects = RealEstateProject.objects.all().order_by('-created_at')
     return render(request, 'projects.html', {'projects': projects})
 
+@login_required_nocache
 def project_details(request, project_id):
     project = RealEstateProject.objects.get(id=project_id)
     plots = project.plots.all()
@@ -273,6 +280,7 @@ def project_details(request, project_id):
         'current_phase': current_phase,  # 👈 Pass it to template
     })
 
+@login_required_nocache
 def agents_list(request):
     users = CustomUser.objects.exclude(is_staff=True)\
                               .annotate(lead_count=Count('leads'))\
@@ -293,7 +301,7 @@ def agents_list(request):
     }
     return render(request, 'agents_list.html', context)
 
-
+@login_required_nocache
 def agent_detail(request, agent_id):
     agent = get_object_or_404(CustomUser, id=agent_id, is_staff=False)
     leads = Lead.objects.filter(agent=agent).select_related('agent').prefetch_related('projects')
@@ -342,7 +350,7 @@ def agent_detail(request, agent_id):
     }
     return render(request, 'agent_detail.html', context)
 
-
+@login_required_nocache
 def edit_project(request, project_id):
     project = get_object_or_404(RealEstateProject, pk=project_id)
     amenities = Amenity.objects.all()
@@ -518,10 +526,12 @@ def deactivate_agent(request, user_id):
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
     
+@login_required_nocache
 def leads(request):
     leads = Lead.objects.all().order_by('-created_at')
     return render(request, 'leads.html', {'leads': leads})
 
+@login_required_nocache
 def lead_list(request):
     leads = (
         Lead.objects.select_related('agent')
@@ -534,6 +544,8 @@ def lead_list(request):
     }
     return render(request, 'leads_list.html', context)
 
+
+@login_required_nocache
 def lead_details(request, lead_id):
     lead = get_object_or_404(Lead, id=lead_id)
     lead_projects = lead.lead_projects.select_related('project').prefetch_related('assigned_plots__plot')
@@ -550,7 +562,7 @@ def lead_details(request, lead_id):
     }
     return render(request, 'lead_details.html', context)
 
-
+@login_required_nocache
 def lead_plot_detail(request, assignment_id):
     assignment = get_object_or_404(LeadPlotAssignment, id=assignment_id)
     project = assignment.plot.project
@@ -663,6 +675,8 @@ def lead_plot_detail(request, assignment_id):
 from django.utils import timezone
 import pytz
 
+
+@login_required_nocache
 def withdrawal_requests(request):
     ist = pytz.timezone("Asia/Kolkata")
 
@@ -717,6 +731,7 @@ def approve_withdrawal(request, pk):
     messages.success(request, f"Withdrawal of ₹{withdrawal.amount} for {commission.agent.full_name} approved successfully.")
     return redirect('withdrawal_requests')
 
+@login_required_nocache
 def marketing_tools(request):
     projects = RealEstateProject.objects.filter(
         Q(brochure__isnull=False) | Q(map_layout__isnull=False)
@@ -756,6 +771,7 @@ def delete_project_map_layout(request, project_id):
         project.save(update_fields=['map_layout'])
     return JsonResponse({'success': True, 'message': 'Map layout deleted successfully.'})
 
+@login_required_nocache
 def add_agent(request):
     if request.method == "POST":
         full_name = request.POST.get("full_name", "").strip()
@@ -804,6 +820,7 @@ def add_agent(request):
     return render(request, "add_agent.html")
 
 
+@login_required_nocache
 def logout_view(request):
     logout(request)
     return redirect('/')

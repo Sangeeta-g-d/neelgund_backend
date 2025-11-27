@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import *
 from . import views
+from django.contrib.auth import views as auth_views
 
 
 urlpatterns = [
@@ -33,5 +34,37 @@ urlpatterns = [
     path('projects/<int:project_id>/delete-brochure/', views.delete_project_brochure, name='delete_project_brochure'),
     path('projects/<int:project_id>/delete-map-layout/', views.delete_project_map_layout, name='delete_project_map_layout'),
     path('logout/', views.logout_view, name='logout'),
+
+
+    path("forgot-password/",
+         auth_views.PasswordResetView.as_view(
+             template_name="forgot_password.html",
+             email_template_name="password_reset_email.html",
+             subject_template_name="password_reset_subject.txt",
+             success_url="/forgot-password/done/"
+         ),
+         name="forgot_password"),
+
+    # Email sent confirmation
+    path("forgot-password/done/",
+         auth_views.PasswordResetDoneView.as_view(
+             template_name="forgot_password_done.html"
+         ),
+         name="forgot_password_done"),
+
+    # Password reset link sent to email
+    path("reset/<uidb64>/<token>/",
+         auth_views.PasswordResetConfirmView.as_view(
+             template_name="reset_password_confirm.html",
+             success_url="/reset/done/"
+         ),
+         name="password_reset_confirm"),
+
+    # Password reset done
+    path("reset/done/",
+         auth_views.PasswordResetCompleteView.as_view(
+             template_name="reset_password_complete.html"
+         ),
+         name="password_reset_complete"),
 
 ]
