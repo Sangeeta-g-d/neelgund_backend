@@ -69,6 +69,9 @@ class LeadListSerializer(serializers.ModelSerializer):
         return None
 
 
+class LeadStatusUpdateSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=STATUS_CHOICES)
+
 class LeadDetailSerializer(serializers.ModelSerializer):
     projects = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()

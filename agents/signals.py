@@ -59,3 +59,50 @@ def update_lead_status_on_project_change(sender, instance, **kwargs):
             lead.status = 'in_progress'
 
     lead.save(update_fields=['status'])
+
+
+
+
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from .models import Lead, Customer
+
+
+@receiver(pre_save, sender=Lead)
+def create_customer_when_lead_booked(sender, instance, **kwargs):
+    """
+    When Lead status becomes 'booked', automatically create a Customer record
+    and delete the lead afterwards.
+    """
+    if not instance.pk:
+        # New lead being created -> no status change yet
+        return
+
+    try:
+        previous = Lead.objects.get(pk=instance.pk)
+    except Lead.DoesNotExist:
+        return
+
+    # Detect status change from any -> booked
+    if previous.status != 'booked' and instance.status == 'booked':
+
+        # Create new customer (even if old one exists)
+        customer = Customer.objects.create(
+            full_name=instance.full_name,
+            contact_number=instance.contact_number,
+            email=instance.email,
+            dob=instance.dob,
+            preferred_location=instance.preferred_location,
+            budget=instance.budget,
+            city=instance.city,
+            notes=instance.notes,
+            agent=instance.agent,
+            lead=instance,   # will become NULL after delete
+            status="in_progress",
+        )
+
+        # Now delete the Lead
+        instance.delete()
+
+        # stop further save attempt (avoid recursion)
+        raise Exception("Lead deleted after successful customer conversion.")

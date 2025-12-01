@@ -5,6 +5,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 urlpatterns = [
     path('projects-name-for-dropdown/', ProjectDropdownAPIView.as_view(), name='project-dropdown'),
     path('add-leads/', LeadCreateAPIView.as_view(), name='add-lead'),
+    path("update-lead-status/<int:lead_id>/", LeadStatusUpdateAPIView.as_view()),
     path('leads/', LeadListAPIView.as_view(), name='lead-list'),
     path('search-lead/', LeadSearchAPIView.as_view(), name='lead-search'),
     path('lead/<int:pk>/', LeadDetailAPIView.as_view(), name='lead-detail'),

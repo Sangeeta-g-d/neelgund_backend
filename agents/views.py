@@ -25,20 +25,88 @@ class ProjectDropdownAPIView(APIView):
             "data": serializer.data
         }, status=status.HTTP_200_OK)
 
-
 class LeadCreateAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        serializer = LeadSerializer(data=request.data, context={'request': request})
+        data = request.data.copy()
+
+        # Prevent adding projects at creation
+        data.pop('projects', None)
+        data.pop('project_ids', None)
+
+        # Auto-assign current agent
+        data['agent'] = request.user.id
+
+        email = data.get("email")
+        contact_number = data.get("contact_number")
+
+        # 🔍 Check for duplicates
+        duplicate_leads = Lead.objects.filter(
+            Q(email=email) | Q(contact_number=contact_number)
+        )
+
+        duplicate_message = None
+        if duplicate_leads.exists():
+            duplicate_message = "A lead with this phone number or email already exists."
+
+        serializer = LeadSerializer(data=data, context={'request': request})
         if serializer.is_valid():
             lead = serializer.save()
-            return Response({
+
+            response_data = {
                 "status_code": 201,
                 "status": "success",
                 "message": "Lead created successfully",
-                "data": LeadListSerializer(lead).data  # return full details
-            }, status=status.HTTP_201_CREATED)
+                "data": LeadListSerializer(lead).data
+            }
+
+            # Include duplicate message if applicable
+            if duplicate_message:
+                response_data["duplicate_warning"] = duplicate_message
+
+            return Response(response_data, status=status.HTTP_201_CREATED)
+
+        return Response({
+            "status_code": 400,
+            "status": "error",
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+# update lead status
+class LeadStatusUpdateAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, lead_id):
+        lead = get_object_or_404(Lead, id=lead_id)
+
+        serializer = LeadStatusUpdateSerializer(data=request.data)
+
+        if serializer.is_valid():
+            new_status = serializer.validated_data['status']
+
+            # 1️⃣ If trying to change to booked → check assigned projects
+            if new_status == "booked":
+                has_project = LeadProject.objects.filter(lead=lead).exists()
+
+                if not has_project:
+                    return Response({
+                        "status_code": 400,
+                        "status": "error",
+                        "message": "Please add a project to this lead before marking status as 'Booked'."
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 2️⃣ If validated and project exists → update status
+            lead.status = new_status
+            lead.save(update_fields=['status', 'updated_at'])
+
+            return Response({
+                "status_code": 200,
+                "status": "success",
+                "message": "Lead status updated successfully",
+                "data": LeadListSerializer(lead).data
+            }, status=status.HTTP_200_OK)
 
         return Response({
             "status_code": 400,
@@ -228,7 +296,7 @@ class AssignProjectsToLeadAPIView(APIView):
                 obj, created = LeadProject.objects.get_or_create(
                     lead=lead,
                     project=project,
-                    defaults={"status": "interested"}  # default status
+                    defaults={"status": "in_progress"}  # default status
                 )
                 if created:
                     assigned_count += 1

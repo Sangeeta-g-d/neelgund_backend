@@ -8,28 +8,17 @@ import re
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-class Lead(models.Model):
-    STATUS_CHOICES = [
-        ('new', 'New'),
-        ('in_progress', 'In Progress'),
-        ('closed', 'Closed'),
-        ('cancelled', 'Cancelled'),
-    ]
 
-    agent = models.ForeignKey(
-        CustomUser,
-        on_delete=models.CASCADE,
-        related_name='leads',
-        help_text="Agent who added this lead"
-    )
-    projects = models.ManyToManyField(
-        RealEstateProject,
-        through='LeadProject',
-        blank=True,
-        related_name='leads',
-        help_text="Projects the lead is interested in"
-    )
+STATUS_CHOICES = [
+    ('not_contacted', 'Not Contacted'),
+    ('interest_or_lost', 'Interest / Lost'),
+    ('ready_for_visit', 'Ready for Visit'),
+    ('visit_completed', 'Visit Completed'),
+    ('looking_other_location', 'Looking Other Location'),
+    ('booked', 'Booked'),
+]
 
+class PersonBase(models.Model):
     full_name = models.CharField(max_length=150)
     contact_number = models.CharField(max_length=15)
     email = models.EmailField(blank=True, null=True)
@@ -37,45 +26,73 @@ class Lead(models.Model):
     preferred_location = models.CharField(max_length=255, blank=True, null=True)
     budget = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
 
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default='new'
+    agent = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+
+    class Meta:
+        abstract = True
+
+class Lead(PersonBase):
+    projects = models.ManyToManyField(
+        RealEstateProject,
+        through='LeadProject',
+        related_name='leads',
     )
 
-    notes = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='not_contacted')
+
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
+
+class Customer(PersonBase):
+    STATUS_CHOICES = [
+        ('in_progress', 'In Progress'),
+        ('closed', 'Closed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    lead = models.OneToOneField(Lead, on_delete=models.SET_NULL, null=True, related_name="customer")
+
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='in_progress'
+    )
+
     class Meta:
-        ordering = ['-created_at']
-        verbose_name = "Lead"
-        verbose_name_plural = "Leads"
-
-    def __str__(self):
-        return f"{self.full_name} ({self.status})"
-
+        verbose_name = "Customer"
+        verbose_name_plural = "Customers"
 
 class LeadProject(models.Model):
     PROJECT_STATUS_CHOICES = [
-        ('interested', 'Interested'),
-        ('visited', 'Visited'),
         ('in_progress', 'In Progress'),
         ('closed', 'Closed'),
         ('cancelled', 'Cancelled'),
     ]
 
     lead = models.ForeignKey(
-        "Lead",
+        Lead,
         on_delete=models.CASCADE,
-        related_name="lead_projects"
+        related_name="lead_projects", null=True, blank=True
     )
+
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="customer_projects"
+    )
+
     project = models.ForeignKey(
         RealEstateProject,
         on_delete=models.CASCADE,
         related_name="project_leads"
     )
+
     status = models.CharField(
         max_length=50,
         choices=PROJECT_STATUS_CHOICES,
@@ -285,4 +302,4 @@ class CommissionWithdrawal(models.Model):
 
     class Meta:
         verbose_name = "Commission Withdrawal"
-        verbose_name_plural = "Commission Withdrawals"
+        verbose_name_plural = "Commission Withdrawals"  
