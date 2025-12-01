@@ -123,8 +123,7 @@ class LeadListAPIView(APIView):
         agent = request.user  
 
         # Fetch only leads created by this agent
-        leads = Lead.objects.filter(agent=agent).prefetch_related('projects').order_by('-created_at')
-
+        leads = Lead.objects.filter(agent=agent).prefetch_related('projects').order_by('-created_at').exclude(status="booked")
 
         # Serialize data
         serializer = LeadListSerializer(leads, many=True)
@@ -165,7 +164,7 @@ class LeadSearchAPIView(APIView):
         status_filter = request.query_params.get('status')
         type_filter = request.query_params.get('type')
 
-        leads = Lead.objects.filter(agent=agent)
+        leads = Lead.objects.filter(agent=agent).exclude(status="booked")
 
         # --- Search logic ---
         if query:
@@ -210,6 +209,25 @@ class LeadDetailAPIView(APIView):
             "data": serializer.data
         }, status=status.HTTP_200_OK)
     
+
+class CustomerDetailAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        """
+        Fetch full details of a specific customer by ID.
+        """
+        agent = request.user
+        customer = get_object_or_404(Customer, id=pk, agent=agent)
+
+        serializer = CustomerDetailSerializer(customer, context={'request': request})
+
+        return Response({
+            "status_code": 200,
+            "status": "success",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
 
 class LeadPlotAssignmentAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]

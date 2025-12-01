@@ -35,5 +35,6 @@ urlpatterns = [
     path('top-five/',TopAgentsCommissionAPIView.as_view(),name="top-five"),
 
     path('customer-list/',CustomerListAPIView.as_view(),name="customer-list"),
+    path('customer-detail/<int:pk>/',CustomerDetailAPIView.as_view(),name="customer-detaxil"),
 ]
 

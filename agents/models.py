@@ -37,7 +37,7 @@ class Lead(PersonBase):
     projects = models.ManyToManyField(
         RealEstateProject,
         through='LeadProject',
-        related_name='leads',
+        related_name='leads',blank=True, null=True
     )
 
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='not_contacted')
@@ -75,8 +75,10 @@ class LeadProject(models.Model):
 
     lead = models.ForeignKey(
         Lead,
-        on_delete=models.CASCADE,
-        related_name="lead_projects", null=True, blank=True
+        on_delete=models.SET_NULL,   # CHANGE THIS
+        null=True,
+        blank=True,
+        related_name="lead_projects"
     )
 
     customer = models.ForeignKey(
@@ -103,15 +105,15 @@ class LeadProject(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('lead', 'project')
+        unique_together = ('customer', 'project')
 
     def __str__(self):
-        return f"{self.lead.full_name} → {self.project.project_name} ({self.status})"
+        return f"{self.customer.full_name} → {self.project.project_name} ({self.status})"
 
 
 class LeadPlotAssignment(models.Model):
     PLOT_STATUS_CHOICES = [
-        ('booked', 'Booked'),
+        ('in_progress', 'In Progress'),
         ('closed', 'Closed'),
         ('cancelled', 'Cancelled'),
     ]

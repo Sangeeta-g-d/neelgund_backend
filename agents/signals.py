@@ -66,43 +66,32 @@ def update_lead_status_on_project_change(sender, instance, **kwargs):
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from .models import Lead, Customer
-
-
-@receiver(pre_save, sender=Lead)
-def create_customer_when_lead_booked(sender, instance, **kwargs):
-    """
-    When Lead status becomes 'booked', automatically create a Customer record
-    and delete the lead afterwards.
-    """
-    if not instance.pk:
-        # New lead being created -> no status change yet
+from django.db import transaction
+@receiver(post_save, sender=Lead)
+def convert_lead_to_customer(sender, instance, created, **kwargs):
+    if instance.status != "booked":
         return
 
-    try:
-        previous = Lead.objects.get(pk=instance.pk)
-    except Lead.DoesNotExist:
-        return
-
-    # Detect status change from any -> booked
-    if previous.status != 'booked' and instance.status == 'booked':
-
-        # Create new customer (even if old one exists)
-        customer = Customer.objects.create(
-            full_name=instance.full_name,
-            contact_number=instance.contact_number,
-            email=instance.email,
-            dob=instance.dob,
-            preferred_location=instance.preferred_location,
-            budget=instance.budget,
-            city=instance.city,
-            notes=instance.notes,
-            agent=instance.agent,
-            lead=instance,   # will become NULL after delete
-            status="in_progress",
+    def convert_after_commit():
+        # create customer if not exists
+        customer, _ = Customer.objects.get_or_create(
+            lead=instance,
+            defaults={
+                "full_name": instance.full_name,
+                "contact_number": instance.contact_number,
+                "email": instance.email,
+                "dob": instance.dob,
+                "preferred_location": instance.preferred_location,
+                "budget": instance.budget,
+                "city": instance.city,
+                "notes": instance.notes,
+                "agent": instance.agent
+            }
         )
 
-        # Now delete the Lead
-        instance.delete()
+        # attach customer to lead-project mapping
+        LeadProject.objects.filter(lead=instance).update(
+            customer=customer
+        )
 
-        # stop further save attempt (avoid recursion)
-        raise Exception("Lead deleted after successful customer conversion.")
+    transaction.on_commit(convert_after_commit)

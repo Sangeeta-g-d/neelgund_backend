@@ -143,6 +143,101 @@ class LeadDetailSerializer(serializers.ModelSerializer):
             return obj.updated_at.astimezone(ist).strftime('%d-%m-%Y %I:%M %p')
         return None
 
+class CustomerDetailSerializer(serializers.ModelSerializer):
+    projects = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
+    updated_at = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Customer
+        fields = [
+            'id',
+            'full_name',
+            'contact_number',
+            'email',
+            'dob',
+            'preferred_location',
+            'budget',
+            'city',
+            'notes',
+            'status',
+            'projects',
+            'created_at',
+            'updated_at'
+        ]
+
+    def get_projects(self, obj):
+        # Prefetch related models
+        customer_projects = (
+            obj.customer_projects
+              .select_related('project')
+              .prefetch_related(
+                  'assigned_plots__plot',
+                  'assigned_plots__payments'
+              )
+        )
+
+        ist = pytz.timezone('Asia/Kolkata')
+        request = self.context.get('request')
+
+        return [
+            {
+                "assigned_id": cp.id,
+                "id": cp.project.id,
+                "project_id": cp.project.project_id,
+                "project_name": cp.project.project_name,
+                "location": cp.project.location,
+                "status": cp.status,
+                "project_image": (
+                    request.build_absolute_uri(cp.project.banner_image.url)
+                    if cp.project.banner_image else None
+                ),
+
+                "plot_assigned": cp.assigned_plots.exists(),
+
+                "assigned_plots": [
+                    {
+                        "plot_id": ap.plot.id,
+                        "plot_no": ap.plot.plot_no,
+                        "size": ap.plot.size,
+                        "area_sq": float(ap.plot.area_sq),
+                        "price": ap.plot.price,
+                        "status": ap.status,
+                        "remarks": ap.remarks,
+                        "assigned_at": ap.assigned_at.astimezone(ist).strftime('%d-%m-%Y %I:%M %p'),
+
+                        # Include payment details for each plot
+                        "payments": [
+                            {
+                                "payment_id": pay.id,
+                                "phase": pay.phase.activity,
+                                "percentage": pay.phase.payment_percentage,
+                                "amount_paid": float(pay.amount_paid),
+                                "paid": pay.paid,
+                                "paid_at": pay.paid_at.astimezone(ist).strftime('%d-%m-%Y %I:%M %p'),
+                                "remarks": pay.remarks
+                            }
+                            for pay in ap.payments.all()
+                        ]
+                    }
+                    for ap in cp.assigned_plots.all()
+                ]
+            }
+            for cp in customer_projects
+        ]
+
+    def get_created_at(self, obj):
+        if obj.created_at:
+            ist = pytz.timezone('Asia/Kolkata')
+            return obj.created_at.astimezone(ist).strftime('%d-%m-%Y %I:%M %p')
+        return None
+
+    def get_updated_at(self, obj):
+        if obj.updated_at:
+            ist = pytz.timezone('Asia/Kolkata')
+            return obj.updated_at.astimezone(ist).strftime('%d-%m-%Y %I:%M %p')
+        return None
+
 
 # serializers.py
 class LeadPlotAssignmentSerializer(serializers.ModelSerializer):
