@@ -5,11 +5,10 @@ from rest_framework_simplejwt.views import TokenRefreshView
 urlpatterns = [
     path('projects-name-for-dropdown/', ProjectDropdownAPIView.as_view(), name='project-dropdown'),
     path('add-leads/', LeadCreateAPIView.as_view(), name='add-lead'),
-    path('leads-list/', LeadListAPIView.as_view(), name='leads-list'),
     path("update-lead-status/<int:lead_id>/", LeadStatusUpdateAPIView.as_view()),
-    path('customer/', CustomerListAPIView.as_view(), name='customer-list'),
-    path('search-customer/', CustomerSearchAPIView.as_view(), name='customer-search'),
-    path('customer-details/', CustomerListAPIView.as_view(), name='customer-details'),
+    path('leads/', LeadListAPIView.as_view(), name='lead-list'),
+    path('search-lead/', LeadSearchAPIView.as_view(), name='lead-search'),
+    path('lead/<int:pk>/', LeadDetailAPIView.as_view(), name='lead-detail'),
     path('lead-plots/<int:project_id>/', LeadPlotAssignmentAPIView.as_view(), name='lead_plot_assignments'),    
     path('assign-projects/<int:pk>/', AssignProjectsToLeadAPIView.as_view(), name='assign-projects-to-lead'),
 
@@ -33,6 +32,8 @@ urlpatterns = [
     path('withdrawals/', AgentWithdrawalListAPIView.as_view(), name='agent-withdrawal-list'),
 
     # top 5 agents
-    path('top-five/',TopAgentsCommissionAPIView.as_view(),name="top-five")
+    path('top-five/',TopAgentsCommissionAPIView.as_view(),name="top-five"),
+
+    path('customer-list/',CustomerListAPIView.as_view(),name="customer-list"),
 ]
 

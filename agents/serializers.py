@@ -51,75 +51,34 @@ class LeadListSerializer(serializers.ModelSerializer):
         ]
 
     def get_project_names(self, obj):
-        """Return a list of project names linked with the lead via LeadProject."""
-        lead_projects = obj.lead_projects.select_related("project")
-        return [lp.project.project_name for lp in lead_projects]
+        """Return a list of project names the lead is linked with."""
+        return [p.project_name for p in obj.projects.all()]
 
     def get_created_at(self, obj):
         if obj.created_at:
             ist = pytz.timezone('Asia/Kolkata')
-            return obj.created_at.astimezone(ist).strftime('%d-%m-%Y %I:%M %p')
+            local_time = obj.created_at.astimezone(ist)
+            return local_time.strftime('%d-%m-%Y %I:%M %p')
         return None
 
     def get_updated_at(self, obj):
         if obj.updated_at:
             ist = pytz.timezone('Asia/Kolkata')
-            return obj.updated_at.astimezone(ist).strftime('%d-%m-%Y %I:%M %p')
+            local_time = obj.updated_at.astimezone(ist)
+            return local_time.strftime('%d-%m-%Y %I:%M %p')
         return None
-
-
-class CustomerListSerializer(serializers.ModelSerializer):
-    project_names = serializers.SerializerMethodField()
-    created_at = serializers.SerializerMethodField()
-    updated_at = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Customer
-        fields = [
-            'id',
-            'full_name',
-            'contact_number',
-            'email',
-            'dob',
-            'preferred_location',
-            'budget',
-            'city',
-            'status',
-            'notes',
-            'project_names',
-            'created_at',
-            'updated_at'
-        ]
-
-    def get_project_names(self, obj):
-        """Get project names linked with this customer through LeadProject."""
-        lead_projects = obj.customer_projects.select_related("project")
-        return [lp.project.project_name for lp in lead_projects]
-
-    def get_created_at(self, obj):
-        if obj.created_at:
-            ist = pytz.timezone('Asia/Kolkata')
-            return obj.created_at.astimezone(ist).strftime('%d-%m-%Y %I:%M %p')
-        return None
-
-    def get_updated_at(self, obj):
-        if obj.updated_at:
-            ist = pytz.timezone('Asia/Kolkata')
-            return obj.updated_at.astimezone(ist).strftime('%d-%m-%Y %I:%M %p')
-        return None
-
 
 
 class LeadStatusUpdateSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=STATUS_CHOICES)
 
-class CustomerListSerializer(serializers.ModelSerializer):
+class LeadDetailSerializer(serializers.ModelSerializer):
     projects = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
     updated_at = serializers.SerializerMethodField()
 
     class Meta:
-        model = Customer
+        model = Lead
         fields = [
             'id',
             'full_name',
@@ -137,10 +96,10 @@ class CustomerListSerializer(serializers.ModelSerializer):
         ]
 
     def get_projects(self, obj):
-        # Customer has their LeadProject records via: customer_projects
-        lead_projects = obj.customer_projects.select_related('project').prefetch_related('assigned_plots__plot')
+        # Prefetch related to minimize queries
+        lead_projects = obj.lead_projects.select_related('project').prefetch_related('assigned_plots__plot')
+        ist = pytz.timezone('Asia/Kolkata')
         request = self.context.get('request')
-        ist = pytz.timezone("Asia/Kolkata")
 
         return [
             {
@@ -173,13 +132,16 @@ class CustomerListSerializer(serializers.ModelSerializer):
         ]
 
     def get_created_at(self, obj):
-        ist = pytz.timezone('Asia/Kolkata')
-        return obj.created_at.astimezone(ist).strftime('%d-%m-%Y %I:%M %p')
+        if obj.created_at:
+            ist = pytz.timezone('Asia/Kolkata')
+            return obj.created_at.astimezone(ist).strftime('%d-%m-%Y %I:%M %p')
+        return None
 
     def get_updated_at(self, obj):
-        ist = pytz.timezone('Asia/Kolkata')
-        return obj.updated_at.astimezone(ist).strftime('%d-%m-%Y %I:%M %p')
-
+        if obj.updated_at:
+            ist = pytz.timezone('Asia/Kolkata')
+            return obj.updated_at.astimezone(ist).strftime('%d-%m-%Y %I:%M %p')
+        return None
 
 
 # serializers.py
@@ -285,6 +247,47 @@ class PlotInventorySerializer(serializers.ModelSerializer):
     class Meta:
         model = PlotInventory
         fields = ['id', 'plot_no', 'size', 'area_sq', 'price', 'is_available']
+
+
+class CustomerListSerializer(serializers.ModelSerializer):
+    project_names = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
+    updated_at = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Customer
+        fields = [
+            'id',
+            'full_name',
+            'contact_number',
+            'email',
+            'dob',
+            'preferred_location',
+            'budget',
+            'city',
+            'status',
+            'notes',
+            'project_names',
+            'created_at',
+            'updated_at'
+        ]
+
+    def get_project_names(self, obj):
+        """Get project names linked with this customer through LeadProject."""
+        lead_projects = obj.customer_projects.select_related("project")
+        return [lp.project.project_name for lp in lead_projects]
+
+    def get_created_at(self, obj):
+        if obj.created_at:
+            ist = pytz.timezone('Asia/Kolkata')
+            return obj.created_at.astimezone(ist).strftime('%d-%m-%Y %I:%M %p')
+        return None
+
+    def get_updated_at(self, obj):
+        if obj.updated_at:
+            ist = pytz.timezone('Asia/Kolkata')
+            return obj.updated_at.astimezone(ist).strftime('%d-%m-%Y %I:%M %p')
+        return None
 
 
 # commission API according to the plots

@@ -115,6 +115,27 @@ class LeadStatusUpdateAPIView(APIView):
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
+class LeadListAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # Get the authenticated user
+        agent = request.user  
+
+        # Fetch only leads created by this agent
+        leads = Lead.objects.filter(agent=agent).prefetch_related('projects').order_by('-created_at')
+
+
+        # Serialize data
+        serializer = LeadListSerializer(leads, many=True)
+
+        return Response({
+            "status_code": 200,
+            "status": "success",
+            "count": leads.count(),
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+    
 class CustomerListAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -133,10 +154,9 @@ class CustomerListAPIView(APIView):
             "data": serializer.data
         }, status=status.HTTP_200_OK)
 
-    
 
 # search API
-class CustomerSearchAPIView(APIView):
+class LeadSearchAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
@@ -145,7 +165,7 @@ class CustomerSearchAPIView(APIView):
         status_filter = request.query_params.get('status')
         type_filter = request.query_params.get('type')
 
-        leads = Customer.objects.filter(agent=agent)
+        leads = Lead.objects.filter(agent=agent)
 
         # --- Search logic ---
         if query:
@@ -164,7 +184,7 @@ class CustomerSearchAPIView(APIView):
 
         leads = leads.order_by('-created_at')
 
-        serializer = CustomerListSerializer(leads, many=True, context={'request': request})
+        serializer = LeadListSerializer(leads, many=True)
         return Response({
             "status_code": 200,
             "status": "success",
@@ -173,39 +193,22 @@ class CustomerSearchAPIView(APIView):
         }, status=status.HTTP_200_OK)
     
 
-class CustomerListAPIView(APIView):
+class LeadDetailAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request, pk):
+        """
+        Fetch full details of a specific lead by ID.
+        """
         agent = request.user
-        customers = Customer.objects.filter(agent=agent).select_related('lead')
+        lead = get_object_or_404(Lead, id=pk, agent=agent)
 
-        serializer = CustomerListSerializer(customers, many=True, context={'request': request})
+        serializer = LeadDetailSerializer(lead, context={'request': request})
         return Response({
             "status_code": 200,
             "status": "success",
-            "data": serializer.data
-        })
-
-
-class LeadListAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        agent = request.user  
-
-        # Fetch only leads for this agent
-        leads = Lead.objects.filter(agent=agent).order_by('-created_at')
-
-        serializer = LeadListSerializer(leads, many=True)
-
-        return Response({
-            "status_code": 200,
-            "status": "success",
-            "count": leads.count(),
             "data": serializer.data
         }, status=status.HTTP_200_OK)
-
     
 
 class LeadPlotAssignmentAPIView(APIView):
