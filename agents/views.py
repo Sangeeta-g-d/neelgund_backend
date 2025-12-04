@@ -843,7 +843,8 @@ class AgentBookingRecordAPIView(APIView):
 # booking full details
 class AgentBookingDetailAPIView(APIView):
     """
-    Fetch detailed info for a specific booking, including project, plot, lead, payment, and commission details.
+    Fetch detailed info for a specific booking, including project, plot, lead,
+    payment, commission details + billing_number, payment_phase, remarks.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -865,7 +866,9 @@ class AgentBookingDetailAPIView(APIView):
         lead = assignment.lead_project.lead
         plot = assignment.plot
 
-        # ✅ Calculate prices
+        # -------------------------
+        # PRICE CALCULATIONS
+        # -------------------------
         total_price = parse_price(plot.price)
         total_sqft = getattr(plot, "area_sq", Decimal("0.00"))
 
@@ -875,34 +878,31 @@ class AgentBookingDetailAPIView(APIView):
 
         balance_amount = total_price - paid_amount
 
-        # ✅ Commission details
+        # -------------------------
+        # COMMISSION DETAILS
+        # -------------------------
         commission = getattr(assignment, "commission", None)
         total_commission = commission.total_commission if commission else Decimal("0.00")
         withdrawable_amount = commission.withdrawable_amount if commission else Decimal("0.00")
         withdrawn_amount = commission.withdrawn_amount if commission else Decimal("0.00")
 
-        # ✅ Project phases
+        # -------------------------
+        # PHASE DETAILS
+        # -------------------------
         phases = project.payment_phases.order_by("order")
         total_phases = phases.count()
-
         paid_phase_ids = assignment.payments.filter(paid=True).values_list("phase_id", flat=True)
         paid_phases_count = len(paid_phase_ids)
 
-        # ✅ Current project phase
         current_phase = project.current_phase
         current_phase_order = current_phase.order if current_phase else None
 
-        # ✅ Identify unpaid phases
         unpaid_phases = phases.exclude(id__in=paid_phase_ids)
+        pending_till_current = unpaid_phases.filter(order__lte=current_phase_order) if current_phase_order else unpaid_phases
 
-        # ✅ Case: If lead has missed earlier payments and current phase has advanced
-        # → Add all unpaid phases till current project phase
-        if current_phase_order:
-            pending_till_current = unpaid_phases.filter(order__lte=current_phase_order)
-        else:
-            pending_till_current = unpaid_phases
-
-        # ✅ Calculate next payment info (sum of pending till current)
+        # -------------------------
+        # CALCULATE NEXT PAYMENT
+        # -------------------------
         next_payment_details = None
         if pending_till_current.exists():
             total_pending_percent = pending_till_current.aggregate(
@@ -919,7 +919,27 @@ class AgentBookingDetailAPIView(APIView):
                 "next_payment_amount": f"{next_payment_amount:.2f}",
             }
 
-        # ✅ Build response data
+        # --------------------------------------------------------------------
+        # ✅ ADD BILL NUMBER, PAYMENT PHASE, AND REMARKS (NEW REQUIREMENT)
+        # --------------------------------------------------------------------
+        payments_list = [
+            {
+                "payment_id": p.id,
+                "phase_id": p.phase.id,
+                "phase_activity": p.phase.activity,
+                "payment_percentage": f"{p.phase.payment_percentage:.2f}",
+                "amount_paid": f"{p.amount_paid:.2f}",
+                "paid": p.paid,
+                "paid_at": format_datetime_ist(p.paid_at),
+                "bill_number": p.bill_number,
+                "remarks": p.remarks,
+            }
+            for p in assignment.payments.select_related("phase").order_by("paid_at")
+        ]
+
+        # --------------------------------------------------------------------
+        # COMPLETE RESPONSE
+        # --------------------------------------------------------------------
         data = {
             "project": {
                 "id": project.id,
@@ -942,12 +962,15 @@ class AgentBookingDetailAPIView(APIView):
                     "email": lead.email,
                 },
                 "date": format_datetime_ist(assignment.assigned_at),
+                "remarks": assignment.remarks,        # NEW (assignment level remarks)
+                "payment_method": assignment.payment_method,  
             },
             "payments": {
                 "total_amount": f"{total_price:.2f}",
                 "total_paid": f"{paid_amount:.2f}",
                 "balance_amount": f"{balance_amount:.2f}",
                 "next_phase": next_payment_details,
+                "payment_records": payments_list,    # FULL BREAKDOWN (NEW)
             },
             "commission": {
                 "total_commission": f"{total_commission:.2f}",
