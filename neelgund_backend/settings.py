@@ -86,6 +86,8 @@ TEMPLATES = [
     },
 ]
 
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20 MB
 
 from datetime import timedelta
 SIMPLE_JWT = {
