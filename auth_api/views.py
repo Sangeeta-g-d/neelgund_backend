@@ -2,10 +2,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import UserRegistrationSerializer, UserLoginSerializer, CustomUserSerializer
+from .serializers import UserRegistrationSerializer, UserLoginSerializer, CustomUserSerializer, DeviceTokenSerializer
 from rest_framework import permissions, status
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
-from .models import CustomUser, OTPVerification,EmailOTPVerification
+from .models import CustomUser, OTPVerification,EmailOTPVerification,DeviceToken
 from .utils import send_otp_via_smsalert
 import random
 import requests
@@ -362,3 +362,38 @@ class VerifyEmailOTPAPIView(APIView):
             "access": str(refresh.access_token),
             "refresh": str(refresh),
         }, status=200)
+
+
+class RegisterDeviceTokenAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        serializer = DeviceTokenSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(
+                {"status": "error", "errors": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        token = serializer.validated_data["token"]
+        device_type = serializer.validated_data["device_type"]
+
+        # Check if token already exists anywhere
+        device, created = DeviceToken.objects.update_or_create(
+            token=token,
+            defaults={
+                "user": user,
+                "device_type": device_type
+            }
+        )
+
+        return Response(
+            {
+                "status": "success",
+                "message": "Device token registered successfully",
+                "created": created
+            },
+            status=status.HTTP_200_OK
+        )

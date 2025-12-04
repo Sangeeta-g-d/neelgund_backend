@@ -86,3 +86,24 @@ class EmailOTPVerification(models.Model):
 
     def __str__(self):
         return f"{self.email} - {self.otp}"
+    
+
+class DeviceToken(models.Model):
+    DEVICE_TYPES = (
+        ("android", "Android"),
+        ("ios", "iOS"),
+        ("web", "Web"),
+    )
+
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="device_tokens"
+    )
+    device_type = models.CharField(max_length=20, choices=DEVICE_TYPES)
+    token = models.CharField(max_length=500, unique=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.email} - {self.device_type}"

@@ -14,4 +14,6 @@ urlpatterns = [
 
     path('send-email-otp/',SendEmailOTPAPIView.as_view(),name='send-email-otp'),
     path('verify-email-otp/',VerifyEmailOTPAPIView.as_view(),name='verify-email-otp'),
+
+    path("device-token/", RegisterDeviceTokenAPIView.as_view(), name="register_device_token"),
     ]

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser
+from .models import CustomUser,DeviceToken
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -66,3 +66,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
         read_only_fields = ['email', 'date_joined', 'approved']  # for example
 
 
+
+class DeviceTokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeviceToken
+        fields = ["token", "device_type"]

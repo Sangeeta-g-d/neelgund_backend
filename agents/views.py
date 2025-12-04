@@ -675,7 +675,7 @@ class AgentBookingRecordAPIView(APIView):
         search_query = request.query_params.get("search", "").strip()
         project_filter = request.query_params.get("project", "").strip()
 
-        # ✅ Base Query
+        # Base Query
         assignments = (
             LeadPlotAssignment.objects
             .select_related(
@@ -706,7 +706,14 @@ class AgentBookingRecordAPIView(APIView):
             lead = assignment.lead_project.lead
             plot = assignment.plot
 
-            total_price = parse_price(plot.price)
+            # -------------------------------------------------------
+            # NEW: Use negotiated price if applicable
+            # -------------------------------------------------------
+            if assignment.is_negotiated and assignment.negotiated_price_value:
+                total_price = assignment.negotiated_price_value
+            else:
+                total_price = parse_price(plot.price)
+
             total_sqft = getattr(plot, "area_sq", Decimal("0.00"))
 
             paid_amount = assignment.payments.filter(paid=True).aggregate(
@@ -718,27 +725,57 @@ class AgentBookingRecordAPIView(APIView):
             commission_obj = getattr(assignment, "commission", None)
             total_commission = commission_obj.total_commission if commission_obj else Decimal("0.00")
 
-            # ✅ Project Phases
+            # -------------------------------------------------------
+            # NEW: FULL PAYMENT => Skip ALL phase logic
+            # -------------------------------------------------------
+            if assignment.payment_method == "full_payment":
+                booking_data.append({
+                    "project_name": project.project_name,
+                    "booking_id": assignment.id,
+                    "plot_number": plot.plot_no,
+                    "plot_id": plot.id,
+                    "lead_name": lead.full_name,
+                    "date": format_datetime_ist(assignment.assigned_at),
+                    "total_price": f"{total_price:.2f}",
+                    "total_sqft": str(total_sqft),
+                    "paid_amount": f"{paid_amount:.2f}",
+                    "balance_amount": f"{balance_amount:.2f}",
+                    "total_commission": f"{total_commission:.2f}",
+                    "payment_method": "full_payment",
+                    "remarks": assignment.remarks,
+
+                    # Phases removed
+                    "total_phases": 0,
+                    "paid_phases": 0,
+                    "current_phase": None,
+                    "next_payment_phase": None,
+                })
+                continue
+
+            # -------------------------------------------------------
+            # ORIGINAL LOGIC (UNTOUCHED)
+            # -------------------------------------------------------
+
             project_phases = project.payment_phases.order_by("order")
             total_phases = project_phases.count()
 
             paid_phase_ids = assignment.payments.filter(paid=True).values_list("phase_id", flat=True)
             paid_phases_count = len(paid_phase_ids)
 
-            # ✅ Identify Current Project Phase
+            # Identify Current Project Phase
             current_phase = project.current_phase
             current_phase_order = current_phase.order if current_phase else None
 
-            # ✅ Find unpaid phases till current phase
+            # Find unpaid phases till current phase
             unpaid_phases = project_phases.exclude(id__in=paid_phase_ids)
             unpaid_till_current = unpaid_phases
             if current_phase_order:
                 unpaid_till_current = unpaid_phases.filter(order__lte=current_phase_order)
 
-            # ✅ Next payment phase (next immediate unpaid one)
+            # Next payment phase (first immediate unpaid)
             next_phase = unpaid_phases.order_by("order").first()
 
-            # ✅ Calculate next payment
+            # Calculate next payment
             next_payment_details = None
             if unpaid_till_current.exists():
                 total_pending_percent = unpaid_till_current.aggregate(
@@ -755,7 +792,7 @@ class AgentBookingRecordAPIView(APIView):
                     "next_payment_amount": f"{next_payment_amount:.2f}",
                 }
 
-            # ✅ Current Phase Details
+            # Current Phase Details
             current_phase_data = None
             if current_phase:
                 current_phase_data = {
@@ -774,15 +811,17 @@ class AgentBookingRecordAPIView(APIView):
                 "total_price": f"{total_price:.2f}",
                 "total_sqft": str(total_sqft),
                 "paid_amount": f"{paid_amount:.2f}",
+                "payment_method": "phase_wise",
                 "balance_amount": f"{balance_amount:.2f}",
                 "total_commission": f"{total_commission:.2f}",
+                "remarks": assignment.remarks,
                 "total_phases": total_phases,
                 "paid_phases": paid_phases_count,
                 "current_phase": current_phase_data,
                 "next_payment_phase": next_payment_details,
             })
 
-        # ✅ Wrap everything inside "data"
+        # Wrap everything inside "data"
         return Response(
             {
                 "status_code": 200,
