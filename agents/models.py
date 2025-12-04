@@ -72,6 +72,10 @@ class LeadProject(models.Model):
         ('closed', 'Closed'),
         ('cancelled', 'Cancelled'),
     ]
+    PAYMENT_TYPE_CHOICES = [
+        ('full', 'Full Payment'),
+        ('phase', 'Phase Wise Payment'),
+    ]
 
     lead = models.ForeignKey(
         Lead,
@@ -79,6 +83,12 @@ class LeadProject(models.Model):
         null=True,
         blank=True,
         related_name="lead_projects"
+    )
+
+    payment_type = models.CharField(
+        max_length=20,
+        choices=PAYMENT_TYPE_CHOICES,
+        default='phase'
     )
 
     customer = models.ForeignKey(
@@ -117,6 +127,11 @@ class LeadPlotAssignment(models.Model):
         ('closed', 'Closed'),
         ('cancelled', 'Cancelled'),
     ]
+    
+    PAYMENT_METHOD_CHOICES = [
+        ('full_payment', 'Full Payment'),
+        ('phase_wise', 'Phase Wise Payment'),
+    ]
 
     lead_project = models.ForeignKey(
         LeadProject,
@@ -149,11 +164,41 @@ class LeadPlotAssignment(models.Model):
     remarks = models.TextField(blank=True, null=True)
     assigned_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_negotiated = models.BooleanField(default=False)
+
+    # Store price as string ("80L", "1.5Cr", "25,00,000" etc.)
+    negotiated_price = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True
+    )
+
+    negotiated_price_value = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+    
+    # NEW FIELD: Payment method for this plot
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PAYMENT_METHOD_CHOICES,
+        default='phase_wise',
+        null=True,
+        blank=True
+    )
 
     class Meta:
         unique_together = ('lead_project', 'plot')
         verbose_name = "Lead Plot Assignment"
         verbose_name_plural = "Lead Plot Assignments"
+
+    def save(self, *args, **kwargs):
+        # Auto-generate decimal value from the string using your utility function
+        if self.negotiated_price:
+            self.negotiated_price_value = parse_price(self.negotiated_price)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.lead_project.lead.full_name} → {self.plot.plot_no} ({self.status})"
@@ -174,6 +219,12 @@ class LeadPlotPayment(models.Model):
     paid_at = models.DateTimeField(auto_now_add=True)
     remarks = models.TextField(blank=True, null=True)
     paid = models.BooleanField(default=False)
+    bill_number = models.CharField(
+    max_length=100,
+    blank=True,
+    null=True,
+    help_text="Invoice or bill number for this payment"
+    )
 
     class Meta:
         unique_together = ('lead_plot', 'phase')
@@ -182,10 +233,6 @@ class LeadPlotPayment(models.Model):
         return f"{self.lead_plot.plot.plot_no} - {self.phase.activity} ({self.amount_paid})"
 
     def save(self, *args, **kwargs):
-        """
-        When a payment is marked as paid, automatically release corresponding
-        percentage of agent's commission as withdrawable.
-        """
         from decimal import Decimal
         from django.db import transaction
 
@@ -197,20 +244,98 @@ class LeadPlotPayment(models.Model):
 
         super().save(*args, **kwargs)
 
-        # ✅ Only proceed if newly paid or changed from unpaid → paid
-        if self.paid and (is_new or previous_paid is False):
+        # Only run commission logic when payment is marked paid newly
+        if not (self.paid and (is_new or previous_paid is False)):
+            return
+
+        assignment = self.lead_plot
+        commission = getattr(assignment, "commission", None)
+
+        if not commission:
+            return
+
+        # ---------------------------------------------------------
+        # CASE 1: PHASE WISE PAYMENT → release per phase (existing logic)
+
+        if assignment.payment_method == "phase_wise":
+        
             with transaction.atomic():
-                commission = getattr(self.lead_plot, "commission", None)
-                if commission:
-                    total_commission = commission.total_commission
-                    phase_percentage = Decimal(self.phase.payment_percentage)
+            
+                # Determine price: negotiated > default
+                if assignment.is_negotiated and assignment.negotiated_price:
+                    base_price = parse_price(assignment.negotiated_price)
+                else:
+                    # fallback: original plot price
+                    base_price = parse_price(assignment.plot.price)
 
-                    # Calculate proportional commission for this phase
-                    release_amount = (total_commission * phase_percentage) / Decimal("100")
+                # commission percentage is taken from project
+                commission_percentage = Decimal(assignment.plot.project.commission_percentage)
 
-                    # ✅ Update withdrawable amount
-                    commission.withdrawable_amount += release_amount
-                    commission.save(update_fields=["withdrawable_amount", "updated_at"])
+                # calculate total commission dynamically
+                total_commission = (base_price * commission_percentage) / Decimal("100")
+
+                # calculate amount for this phase
+                phase_percentage = Decimal(self.phase.payment_percentage)
+                release_amount = (total_commission * phase_percentage) / Decimal("100")
+
+                # add to withdrawable amount
+                commission.withdrawable_amount += release_amount
+
+                # update total commission in case it changed due to negotiation
+                commission.total_commission = total_commission
+
+                commission.save(update_fields=["withdrawable_amount", "total_commission", "updated_at"])
+
+            return
+
+
+        # ---------------------------------------------------------
+        # CASE 2: FULL PAYMENT → release commission only when ALL phases are paid
+        # ---------------------------------------------------------
+        if assignment.payment_method == "full_payment":
+
+            project = assignment.plot.project
+
+            # Get all full payment phases for this project
+            full_payment_phases = ProjectPaymentPhase.objects.filter(
+                project=project,
+                payment_type="full_payment"
+            )
+
+            # Check if all full_payment phases are paid
+            all_paid = True
+            for phase in full_payment_phases:
+                payment_record = LeadPlotPayment.objects.filter(
+                    lead_plot=assignment,
+                    phase=phase,
+                    paid=True
+                ).first()
+                if not payment_record:
+                    all_paid = False
+                    break
+
+            # If not all paid, do NOT release commission
+            if not all_paid:
+                return
+
+            # ----------------------------------------
+            # RELEASE FULL COMMISSION NOW
+            # ----------------------------------------
+            with transaction.atomic():
+
+                # Determine price: negotiated > default
+                if assignment.is_negotiated and assignment.negotiated_price:
+                    price = parse_price(assignment.negotiated_price)
+                else:
+                    price = parse_price(assignment.plot.price)
+
+                # Compute correct commission
+                total_commission = (price * Decimal(project.commission_percentage)) / Decimal("100")
+                commission.total_commission = total_commission
+
+                # Release entire amount at once
+                commission.withdrawable_amount = total_commission
+                commission.save(update_fields=["total_commission", "withdrawable_amount", "updated_at"])
 
 
 

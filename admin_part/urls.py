@@ -20,6 +20,12 @@ urlpatterns = [
 
     path('lead_list/', views.lead_list, name='lead_list'),
 
+    path("customer_list/",views.customer_list,name="customer_list"),
+    path("customer-details/<int:customer_id>/", views.customer_details, name="customer_details"),
+    path("api/customers/update-negotiation/<int:assignment_id>/", views.update_negotiated_amount),
+
+
+
     path('agents/<int:agent_id>/', views.agent_detail, name='agent_detail'),
     path('lead_details/<int:lead_id>/',views.lead_details,name="lead_details"),
     path('lead-plot-details/<int:assignment_id>/', views.lead_plot_detail, name='lead_plot_detail'),

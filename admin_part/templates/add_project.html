@@ -144,13 +144,19 @@
   <div class="card-body">
     <div id="phasesContainer">
       <div class="row mb-2 phase-row">
-        <div class="col-md-4 mb-2">
+        <div class="col-md-3 mb-2">
           <input type="text" name="phase_activity[]" class="form-control" placeholder="Activity (e.g. Booking)">
         </div>
-        <div class="col-md-3 mb-2">
+        <div class="col-md-2 mb-2">
           <input type="number" step="0.01" name="phase_percentage[]" class="form-control" placeholder="Payment %">
         </div>
-        <div class="col-md-3 mb-2">
+        <div class="col-md-2 mb-2">
+          <select name="phase_payment_type[]" class="form-select">
+            <option value="phase_wise">Phase Wise</option>
+            <option value="full_payment">Full Payment</option>
+          </select>
+        </div>
+        <div class="col-md-2 mb-2">
           <select name="phase_due[]" class="form-select">
             <option value="immediate">Immediate</option>
             <option value="30_days">Within 30 Days</option>
@@ -160,7 +166,7 @@
             <option value="custom">Custom Duration</option>
           </select>
         </div>
-        <div class="col-md-2 mb-2 d-flex align-items-center">
+        <div class="col-md-1 mb-2 d-flex align-items-center">
           <button type="button" class="btn btn-outline-danger btn-sm removePhaseBtn">Remove</button>
         </div>
       </div>

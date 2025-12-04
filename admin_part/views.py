@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import render
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login,logout
@@ -23,10 +24,11 @@ from agents.models import Lead
 import os
 from django.utils import timezone
 from pytz import timezone as pytz_timezone
-from agents.models import LeadPlotPayment,LeadPlotAssignment,CommissionWithdrawal
+from agents.models import LeadPlotPayment,LeadPlotAssignment,CommissionWithdrawal,Customer,LeadProject
 from decimal import Decimal, ROUND_HALF_UP
 from agents.models import AgentCommission
 from .utils import login_required_nocache   
+from django.db.models import Prefetch
 
 def admin_login(request):
     if request.user.is_authenticated:
@@ -189,15 +191,17 @@ def add_project(request):
                 # ✅ Step 5: Payment Phases
                 phase_activities = data.getlist("phase_activity[]")
                 phase_percentages = data.getlist("phase_percentage[]")
+                phase_payment_types = data.getlist("phase_payment_type[]")
                 phase_dues = data.getlist("phase_due[]")
                 created_phases = []
 
-                for idx, (activity, percentage, due) in enumerate(zip(phase_activities, phase_percentages, phase_dues), start=1):
+                for idx, (activity, percentage, payment_type, due) in enumerate(zip(phase_activities, phase_percentages, phase_payment_types, phase_dues), start=1):
                     if activity.strip():
                         phase = ProjectPaymentPhase.objects.create(
                             project=project,
                             activity=activity.strip(),
                             payment_percentage=percentage or 0,
+                            payment_type=payment_type or 'phase_wise',
                             due=due or 'immediate',
                             order=idx,
                         )
@@ -283,7 +287,7 @@ def project_details(request, project_id):
 @login_required_nocache
 def agents_list(request):
     users = CustomUser.objects.exclude(is_staff=True)\
-                              .annotate(lead_count=Count('leads'))\
+                              .annotate(lead_count=Count('lead'))\
                               .order_by('-date_joined')
     
     # Fix: Count after annotation to ensure consistency
@@ -412,15 +416,17 @@ def edit_project(request, project_id):
                 phase_ids = data.getlist("phase_id[]")
                 phase_activities = data.getlist("phase_activity[]")
                 phase_percentages = data.getlist("phase_percentage[]")
+                phase_payment_types = data.getlist("phase_payment_type[]")
                 phase_dues = data.getlist("phase_due[]")
 
                 existing_phase_ids = []
-                for idx, (p_id, activity, percentage, due) in enumerate(zip(phase_ids, phase_activities, phase_percentages, phase_dues), start=1):
+                for idx, (p_id, activity, percentage, payment_type, due) in enumerate(zip(phase_ids, phase_activities, phase_percentages, phase_payment_types, phase_dues), start=1):
                     if activity.strip():
                         if p_id:
                             phase = ProjectPaymentPhase.objects.get(id=p_id)
                             phase.activity = activity.strip()
                             phase.payment_percentage = percentage or 0
+                            phase.payment_type = payment_type or 'phase_wise'
                             phase.due = due
                             phase.order = idx
                             phase.save()
@@ -430,6 +436,7 @@ def edit_project(request, project_id):
                                 project=project,
                                 activity=activity.strip(),
                                 payment_percentage=percentage or 0,
+                                payment_type=payment_type or 'phase_wise',
                                 due=due,
                                 order=idx
                             )
@@ -528,14 +535,16 @@ def deactivate_agent(request, user_id):
     
 @login_required_nocache
 def leads(request):
-    leads = Lead.objects.all().order_by('-created_at')
+    leads = Lead.objects.all().order_by('-created_at').exclude(status='booked')
     return render(request, 'leads.html', {'leads': leads})
 
 @login_required_nocache
 def lead_list(request):
     leads = (
-        Lead.objects.select_related('agent')
+        Lead.objects
+        .select_related('agent')
         .prefetch_related('projects')
+        .exclude(status='booked')    # 👈 Exclude booked leads
         .order_by('-created_at')
     )
 
@@ -543,6 +552,22 @@ def lead_list(request):
         "leads": leads
     }
     return render(request, 'leads_list.html', context)
+
+@login_required_nocache
+def customer_list(request):
+    customers = (
+        Customer.objects
+        .select_related('agent')
+        .prefetch_related(
+            Prefetch(
+                'customer_projects',
+                queryset=LeadProject.objects.select_related('project')
+            )
+        )
+        .order_by('-created_at')
+    )
+
+    return render(request, 'customer_list.html', {"customers": customers})
 
 
 @login_required_nocache
@@ -563,11 +588,78 @@ def lead_details(request, lead_id):
     return render(request, 'lead_details.html', context)
 
 @login_required_nocache
+def customer_details(request, customer_id):
+    customer = get_object_or_404(
+        Customer.objects.select_related("lead", "agent"),
+        id=customer_id
+    )
+
+    # All projects assigned to this customer
+    customer_projects = (
+        customer.customer_projects
+        .select_related("project")
+        .prefetch_related("assigned_plots__plot", "assigned_plots__assigned_by")
+    )
+
+    # Convert times to IST
+    ist = pytz_timezone("Asia/Kolkata")
+    for cp in customer_projects:
+        for assignment in cp.assigned_plots.all():
+            assignment.assigned_at_ist = assignment.assigned_at.astimezone(ist)
+
+    context = {
+        "customer": customer,
+        "customer_projects": customer_projects
+    }
+    return render(request, "customer_details.html", context)
+
+@csrf_exempt
+@login_required_nocache
+def update_negotiated_amount(request, assignment_id):
+    if request.method != "POST":
+        return JsonResponse({"message": "Invalid request"}, status=400)
+
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        negotiated_price = data.get("negotiated_price")
+        payment_method = data.get("payment_method", "phase_wise")
+
+        assignment = LeadPlotAssignment.objects.get(id=assignment_id)
+
+        assignment.negotiated_price = negotiated_price
+        assignment.payment_method = payment_method
+        assignment.is_negotiated = True
+        assignment.save()
+
+        return JsonResponse({"message": "Negotiated amount and payment method updated successfully!"})
+
+    except LeadPlotAssignment.DoesNotExist:
+        return JsonResponse({"message": "Assignment not found!"}, status=404)
+    except Exception as e:
+        return JsonResponse({"message": str(e)}, status=500)
+
+
+
+@login_required_nocache
 def lead_plot_detail(request, assignment_id):
     assignment = get_object_or_404(LeadPlotAssignment, id=assignment_id)
     project = assignment.plot.project
     lead = assignment.lead_project.lead
-    phases = ProjectPaymentPhase.objects.filter(project=project).order_by('order')
+    payment_method = assignment.payment_method or 'phase_wise'
+    
+    # Filter phases based on payment method
+    if payment_method == 'full_payment':
+        # For full payment, show only phases marked as full_payment
+        phases = ProjectPaymentPhase.objects.filter(
+            project=project,
+            payment_type='full_payment'
+        ).order_by('order')
+    else:
+        # For phase wise, show all phase wise payment phases
+        phases = ProjectPaymentPhase.objects.filter(
+            project=project,
+            payment_type='phase_wise'
+        ).order_by('order')
 
     # --- Helper: Parse price strings like "80L", "1Cr", "50K"
     def parse_price(price_str):
@@ -584,6 +676,10 @@ def lead_plot_detail(request, assignment_id):
             return Decimal(0)
 
     plot_price = parse_price(assignment.plot.price)
+    
+    # Use negotiated price if available and negotiated is true
+    if assignment.is_negotiated and assignment.negotiated_price:
+        plot_price = parse_price(assignment.negotiated_price)
 
     # --- Handle POST (Form Submission)
     if request.method == 'POST':
@@ -593,16 +689,19 @@ def lead_plot_detail(request, assignment_id):
                     amount_paid = (plot_price * phase.payment_percentage / Decimal(100)).quantize(Decimal('0.01'))
                     remarks = request.POST.get(f'remarks_{phase.id}')
                     paid_value = request.POST.get(f'paid_{phase.id}') == 'on'
+                    bill_number = request.POST.get(f'bill_number_{phase.id}', '').strip()
+
 
                     payment, created = LeadPlotPayment.objects.get_or_create(
                         lead_plot=assignment,
                         phase=phase,
-                        defaults={'amount_paid': amount_paid, 'remarks': remarks, 'paid': paid_value}
+                        defaults={'amount_paid': amount_paid, 'remarks': remarks, 'paid': paid_value, 'bill_number': bill_number}
                     )
                     if not created:
                         payment.amount_paid = amount_paid
                         payment.remarks = remarks
                         payment.paid = paid_value
+                        payment.bill_number = bill_number
                         payment.save()
 
                 messages.success(request, "Payment phases updated successfully!")
@@ -666,6 +765,7 @@ def lead_plot_detail(request, assignment_id):
         'next_payment_balance': next_payment_balance,  # ✅ total of unpaid phases <= current phase
         'phase_balance_dict': phase_balance_dict,
         'current_phase': current_phase,
+        'payment_method': payment_method,
     }
 
     return render(request, 'lead_plot_detail.html', context)    

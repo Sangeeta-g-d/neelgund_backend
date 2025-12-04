@@ -4,7 +4,7 @@
 {% block content %}
     
 <div class="container py-4">
-  <div class="card shadow border-0 rounded-4 mb-4">
+    <div class="card shadow border-0 rounded-4 mb-4">
     <div class="card-header bg-primary text-white">
       <h4 class="mb-0">
         <i class="bi bi-file-text me-2"></i>
@@ -13,7 +13,22 @@
     </div>
     <div class="card-body">
       <p><strong>Lead:</strong> {{ lead.full_name }} ({{ lead.contact_number }})</p>
-      <p><strong>Plot Price:</strong> ₹{{ plot_price|floatformat:2 }}</p>
+      <p><strong>Plot Price:</strong> 
+        {% if assignment.is_negotiated and assignment.negotiated_price %}
+          <span class="badge bg-success me-2">Negotiated</span>
+          ₹{{ plot_price|floatformat:2 }} <small class="text-muted">(Original: ₹{{ assignment.plot.price }})</small>
+        {% else %}
+          ₹{{ plot_price|floatformat:2 }}
+        {% endif %}
+      </p>
+      <p><strong>Payment Method:</strong> 
+        <span class="badge
+          {% if payment_method == 'full_payment' %}bg-warning
+          {% else %}bg-info
+          {% endif %}">
+          {% if payment_method == 'full_payment' %}Full Payment{% else %}Phase Wise Payment{% endif %}
+        </span>
+      </p>
       <hr>
 
       <form method="POST">
@@ -27,6 +42,7 @@
                 <th>Auto Amount (₹)</th>
                 <th>Due</th>
                 <th>Remarks</th>
+                <th>Bill Number</th>
                 <th>Paid?</th>
                 <th>Next Balance (₹)</th> <!-- ✅ -->
               </tr>
@@ -50,6 +66,13 @@
                     rows="2"
                     placeholder="Add remarks...">{{ payment.remarks|default_if_none:'' }}</textarea>
                 </td>
+                <td>
+                  <input type="text" 
+                         name="bill_number_{{ phase.id }}" 
+                         class="form-control form-control-sm"
+                         value="{{ payment.bill_number|default_if_none:'' }}"
+                         placeholder="Enter bill number">
+                </td>
                 <td class="text-center">
                   <input type="checkbox" 
                          name="paid_{{ phase.id }}" 
@@ -65,7 +88,7 @@
            <tfoot class="table-light">
   {% if next_phase %}
 <tr>
-  <th colspan="5" class="text-end">
+  <th colspan="7" class="text-end">
     Next Payment ({{ next_phase.activity }})
     {% if current_phase %}
       <small class="text-muted">[Current Phase: {{ current_phase.activity }}]</small>
@@ -75,11 +98,11 @@
 </tr>
 {% endif %}
   <tr>
-    <th colspan="5" class="text-end">Total Paid</th>
+    <th colspan="7" class="text-end">Total Paid</th>
     <th class="text-primary">₹{{ total_paid|floatformat:2 }}</th>
   </tr>
   <tr>
-    <th colspan="5" class="text-end">Total Balance</th>
+    <th colspan="7" class="text-end">Total Balance</th>
     <th class="text-danger">₹{{ total_balance|floatformat:2 }}</th>
   </tr>
 </tfoot>

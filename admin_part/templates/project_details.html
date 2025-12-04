@@ -210,6 +210,7 @@
             <tr>
               <th class="py-3 ps-4 fw-semibold text-dark">#</th>
               <th class="py-3 fw-semibold text-dark">Activity</th>
+              <th class="py-3 fw-semibold text-dark text-center">Payment Type</th>
               <th class="py-3 fw-semibold text-dark text-center">Due</th>
               <th class="py-3 fw-semibold text-dark text-end pe-4">Payment %</th>
             </tr>
@@ -219,6 +220,17 @@
             <tr>
               <td class="ps-4 py-3 fw-semibold text-dark">{{ forloop.counter }}</td>
               <td class="py-3">{{ phase.activity }}</td>
+
+              <!-- Payment Type Badge -->
+              <td class="py-3 text-center">
+                {% if phase.payment_type == 'phase_wise' %}
+                  <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-3 py-2">Phase Wise</span>
+                {% elif phase.payment_type == 'full_payment' %}
+                  <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-3 py-2">Full Payment</span>
+                {% else %}
+                  <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-3 py-2">{{ phase.get_payment_type_display }}</span>
+                {% endif %}
+              </td>
 
               <!-- Format due text nicely -->
               <td class="py-3 text-center">

@@ -85,6 +85,11 @@ class PlotInventory(models.Model):
         return f"{self.project.project_name} - Plot {self.plot_no}"
     
 class ProjectPaymentPhase(models.Model):
+    PAYMENT_TYPE_CHOICES = [
+        ('full_payment', 'Full Payment'),
+        ('phase_wise', 'Phase Wise Payment'),
+    ]
+
     DUE_CHOICES = [
         ('immediate', 'Immediate'),
         ('30_days', 'Within 30 Days'),
@@ -99,28 +104,29 @@ class ProjectPaymentPhase(models.Model):
         on_delete=models.CASCADE,
         related_name='payment_phases'
     )
-    activity = models.CharField(max_length=255, help_text="Name of the payment phase/activity")
+
+    # NEW FIELD (IMPORTANT)
+    payment_type = models.CharField(
+        max_length=20,
+        choices=PAYMENT_TYPE_CHOICES,
+        default='phase_wise'
+    )
+
+    activity = models.CharField(max_length=255)
     payment_percentage = models.DecimalField(
         max_digits=5,
         decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
-        help_text="Payment percentage for this phase"
     )
-    due = models.CharField(
-        max_length=50,
-        choices=DUE_CHOICES,
-        default='immediate',
-        help_text="When the payment is due"
-    )
-    order = models.PositiveIntegerField(default=0, help_text="Order of the payment phase")
+    due = models.CharField(max_length=50, choices=DUE_CHOICES, default='immediate')
+    order = models.PositiveIntegerField(default=0)
+
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['order']
         unique_together = ('project', 'activity')
-        verbose_name = "Project Payment Phase"
-        verbose_name_plural = "Project Payment Phases"
 
     def __str__(self):
         return f"{self.project.project_name} - {self.activity} ({self.payment_percentage}%)"

@@ -1,0 +1,311 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% load tz %}
+{% block content %}
+
+<div class="container py-4">
+
+  <!-- Customer Header -->
+  <div class="card border-0 shadow rounded-4 mb-4">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center">
+        <h4 class="fw-bold text-primary mb-0">
+          <i class="bi bi-person-vcard-fill me-2"></i>{{ customer.full_name }}
+        </h4>
+
+        <span class="badge
+          {% if customer.status == 'in_progress' %}bg-warning
+          {% elif customer.status == 'closed' %}bg-success
+          {% elif customer.status == 'cancelled' %}bg-danger
+          {% endif %}
+          px-3 py-2">
+          {{ customer.get_status_display }}
+        </span>
+      </div>
+
+      <hr>
+
+      <div class="row g-3">
+        <div class="col-md-4">
+          <p class="mb-1 text-muted">📞 Contact:</p>
+          <h6>{{ customer.contact_number }}</h6>
+        </div>
+
+        <div class="col-md-4">
+          <p class="mb-1 text-muted">📧 Email:</p>
+          <h6>{{ customer.email|default:"N/A" }}</h6>
+        </div>
+
+        <div class="col-md-4">
+          <p class="mb-1 text-muted">🏙 City:</p>
+          <h6>{{ customer.city|default:"N/A" }}</h6>
+        </div>
+
+        <div class="col-md-4">
+          <p class="mb-1 text-muted">💰 Budget:</p>
+          <h6>₹{{ customer.budget|default:"0.00" }}</h6>
+        </div>
+
+        <div class="col-md-4">
+          <p class="mb-1 text-muted">📍 Preferred Location:</p>
+          <h6>{{ customer.preferred_location|default:"N/A" }}</h6>
+        </div>
+
+        <div class="col-md-12">
+          <p class="mb-1 text-muted">📝 Notes:</p>
+          <p class="mb-0">{{ customer.notes|default:"No notes available" }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Assigned Projects -->
+  {% for cp in customer_projects %}
+  <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+      <h5 class="mb-0 fw-bold text-secondary">
+        <i class="bi bi-building-check me-2"></i>{{ cp.project.project_name }}
+      </h5>
+
+      <span class="badge
+        {% if cp.status == 'in_progress' %}bg-warning
+        {% elif cp.status == 'closed' %}bg-success
+        {% elif cp.status == 'cancelled' %}bg-danger
+        {% endif %}
+        px-3 py-2">
+        {{ cp.get_status_display }}
+      </span>
+    </div>
+
+    <div class="card-body">
+
+      {% if cp.assigned_plots.all %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Assignment ID</th>
+              <th>Plot No</th>
+              <th>Area</th>
+              <th>Status</th>
+              <th>Remarks</th>
+              <th>Assigned By</th>
+              <th>Negotiated?</th>
+              <th>Negotiated Price</th>
+              <th>Payment Method</th>
+              <th>Assigned At</th>
+              <th>Details</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+
+         <tbody>
+  {% for assignment in cp.assigned_plots.all %}
+  <tr>
+    <td>{{ assignment.id }}</td>
+    <td>{{ assignment.plot.plot_no }}</td>
+    <td>{{ assignment.plot.area }} sq.ft</td>
+
+    <td>
+      <span class="badge
+        {% if assignment.status == 'in_progress' %}bg-warning
+        {% elif assignment.status == 'closed' %}bg-success
+        {% elif assignment.status == 'cancelled' %}bg-danger
+        {% endif %}">
+        {{ assignment.get_status_display }}
+      </span>
+    </td>
+
+    <td>{{ assignment.remarks|default:"-" }}</td>
+
+    <td>{{ assignment.assigned_by.full_name }}</td>
+
+    <td>
+      {% if assignment.is_negotiated %}
+        <span class="badge bg-info">Yes</span>
+      {% else %}
+        <span class="badge bg-secondary">No</span>
+      {% endif %}
+    </td>
+
+    <td>
+      {% if assignment.negotiated_price %}
+        ₹{{ assignment.negotiated_price }}
+      {% else %}—{% endif %}
+    </td>
+
+    <td>
+      {% if assignment.payment_method %}
+        <span class="badge
+          {% if assignment.payment_method == 'full_payment' %}bg-warning
+          {% else %}bg-info
+          {% endif %}">
+          {{ assignment.get_payment_method_display }}
+        </span>
+      {% else %}—{% endif %}
+    </td>
+
+    <td>{{ assignment.assigned_at|localtime|date:"d M Y, h:i A" }}</td>
+
+    <td>
+      <a href="/lead-plot-details/{{ assignment.id }}/" class="btn btn-outline-primary btn-sm">View</a>
+    </td>
+
+    <td>
+      <button 
+        class="btn btn-sm btn-outline-primary"
+        data-bs-toggle="modal"
+        data-bs-target="#negotiationModal"
+        data-assignment-id="{{ assignment.id }}"
+        data-current-price="{{ assignment.negotiated_price|default:'' }}"
+        data-payment-method="{{ assignment.payment_method|default:'phase_wise' }}"
+      >
+        <i class="bi bi-cash-coin"></i> Negotiate
+      </button>
+    </td>
+  </tr>
+  {% endfor %}
+</tbody>
+
+        </table>
+      </div>
+
+      {% else %}
+      <p class="text-muted mb-0">No plots assigned yet for this project.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Negotiated Price Modal -->
+<div class="modal fade" id="negotiationModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 shadow">
+
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold">Add Negotiated Amount</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <form id="negotiationForm">
+          <input type="hidden" id="negAssignmentId">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Negotiated Amount</label>
+            <input type="text" id="negotiatedPrice" class="form-control" placeholder="e.g., 85L, 1.5Cr, 23,00,000" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Payment Method</label>
+            <select id="paymentMethod" class="form-select" required>
+              <option value="phase_wise">Phase Wise Payment</option>
+              <option value="full_payment">Full Payment</option>
+            </select>
+          </div>
+
+          <div class="text-end">
+            <button type="submit" class="btn btn-outline-primary">
+              <i class="bi bi-check2-circle"></i> Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" />
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  const modal = document.getElementById("negotiationModal");
+  const form = document.getElementById("negotiationForm");
+
+  modal.addEventListener("show.bs.modal", (event) => {
+    const button = event.relatedTarget;
+    const assignmentId = button.getAttribute("data-assignment-id");
+    const price = button.getAttribute("data-current-price");
+    const paymentMethod = button.getAttribute("data-payment-method");
+
+    document.getElementById("negAssignmentId").value = assignmentId;
+    document.getElementById("negotiatedPrice").value = price;
+    document.getElementById("paymentMethod").value = paymentMethod || 'phase_wise';
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const assignmentId = document.getElementById("negAssignmentId").value;
+    const negotiated_price = document.getElementById("negotiatedPrice").value;
+    const payment_method = document.getElementById("paymentMethod").value;
+
+    try {
+      const response = await fetch(`/api/customers/update-negotiation/${assignmentId}/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken")
+        },
+        body: JSON.stringify({ negotiated_price, payment_method })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Toastify({
+          text: data.message,
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "#28a745",
+        }).showToast();
+
+        setTimeout(() => location.reload(), 2000);
+      } else {
+        Toastify({
+          text: data.message,
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "#dc3545",
+        }).showToast();
+      }
+
+      const m = bootstrap.Modal.getInstance(modal);
+      m.hide();
+
+    } catch (error) {
+      Toastify({
+        text: "Unexpected error occurred",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "#dc3545",
+      }).showToast();
+    }
+  });
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+});
+</script>
+
+
+</div>
+
+{% endblock %}
