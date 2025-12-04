@@ -51,6 +51,14 @@ TIME_ZONE = 'Asia/Kolkata'
 
 AUTH_USER_MODEL = 'auth_api.CustomUser'
 
+
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/1'
+
+CELERY_TIMEZONE = 'Asia/Kolkata'
+CELERY_ENABLE_UTC = False
+
+CELERY_BEAT_SCHEDULE = {}
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

@@ -115,22 +115,25 @@ class ProjectSearchAPIView(APIView):
     
 class PlotPaymentBreakdownAPIView(APIView):
     """
-    Returns payment breakdown for a plot based on its project's payment phases.
+    Returns payment breakdown for a plot including:
+    - Phase-wise payment plan
+    - Full payment plan
     """
+
     def get(self, request, plot_id):
-    # 1️⃣ Fetch the plot
+        # 1️⃣ Fetch the plot
         plot = get_object_or_404(PlotInventory, id=plot_id)
         project = plot.project
 
-        # 2️⃣ Convert price (e.g. "80L", "1.5Cr") → Decimal value (in Lakhs)
+        # 2️⃣ Convert price (e.g. "80L", "1.5Cr") → Decimal value in Lakhs
         price_str = plot.price.strip().upper()
         total_price_lakhs = Decimal(0)
 
         try:
-            if 'CR' in price_str:
-                total_price_lakhs = Decimal(price_str.replace('CR', '').strip()) * 100
-            elif 'L' in price_str:
-                total_price_lakhs = Decimal(price_str.replace('L', '').strip())
+            if "CR" in price_str:
+                total_price_lakhs = Decimal(price_str.replace("CR", "").strip()) * 100
+            elif "L" in price_str:
+                total_price_lakhs = Decimal(price_str.replace("L", "").strip())
             else:
                 total_price_lakhs = Decimal(price_str)
         except Exception:
@@ -140,27 +143,42 @@ class PlotPaymentBreakdownAPIView(APIView):
                 "message": f"Invalid price format for plot {plot.plot_no}."
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # 3️⃣ Fetch payment phases ordered by 'order'
-        phases = ProjectPaymentPhase.objects.filter(project=project).order_by('order')
+        # 3️⃣ Fetch phases grouped by payment_type
+        phase_wise_phases = ProjectPaymentPhase.objects.filter(
+            project=project,
+            payment_type="phase_wise"
+        ).order_by("order")
 
-        # 4️⃣ Build breakdown
-        breakdown = []
-        for phase in phases:
-            value_lakhs = (total_price_lakhs * Decimal(phase.payment_percentage)) / 100
+        full_payment_phases = ProjectPaymentPhase.objects.filter(
+            project=project,
+            payment_type="full_payment"
+        ).order_by("order")
 
-            # ✅ Format due (e.g. "60_days" → "60 days", "immediate" stays same)
-            formatted_due = phase.due.replace('_', ' ')
-            if formatted_due != 'immediate':
-                formatted_due = formatted_due.capitalize()
+        # 4️⃣ Generic function to build breakdown list
+        def build_breakdown(phases):
+            breakdown_list = []
+            for phase in phases:
+                amount = (total_price_lakhs * Decimal(phase.payment_percentage)) / 100
 
-            breakdown.append({
-                "activity": phase.activity,
-                "due": formatted_due,
-                "payment_percentage": phase.payment_percentage,
-                "calculated_value": f"{value_lakhs:.2f}L"
-            })
+                # Format "30_days" → "30 days"
+                formatted_due = phase.due.replace("_", " ")
+                if formatted_due != "immediate":
+                    formatted_due = formatted_due.capitalize()
 
-        # 5️⃣ Return response
+                breakdown_list.append({
+                    "activity": phase.activity,
+                    "due": formatted_due,
+                    "payment_percentage": phase.payment_percentage,
+                    "calculated_value": f"{amount:.2f}L"
+                })
+
+            return breakdown_list
+
+        # 5️⃣ Build two sets of breakdowns
+        phase_wise_breakdown = build_breakdown(phase_wise_phases)
+        full_payment_breakdown = build_breakdown(full_payment_phases)
+
+        # 6️⃣ Response
         return Response({
             "status_code": status.HTTP_200_OK,
             "status": "success",
@@ -168,9 +186,13 @@ class PlotPaymentBreakdownAPIView(APIView):
                 "plot_no": plot.plot_no,
                 "project_name": project.project_name,
                 "total_price": f"{total_price_lakhs:.2f}L",
-                "payment_breakdown": breakdown
+                "payment_breakdown": {
+                    "phase_wise": phase_wise_breakdown,
+                    "full_payment": full_payment_breakdown,
+                }
             }
         }, status=status.HTTP_200_OK)
+
     
 
 class ProjectPagination(PageNumberPagination):

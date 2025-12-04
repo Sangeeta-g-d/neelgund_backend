@@ -389,6 +389,12 @@ class AgentCommission(models.Model):
     total_commission = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     withdrawable_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     withdrawn_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    matured_amount = models.DecimalField(
+    max_digits=12,
+    decimal_places=2,
+    default=0,
+    help_text="Amount available after 30-day maturity"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -404,9 +410,25 @@ class AgentCommission(models.Model):
         self.total_commission = (total_price * Decimal(self.project.commission_percentage)) / Decimal('100')
         self.save()
 
+        
+    def update_maturity(self):
+        """
+        Moves withdrawable_amount → matured_amount after 30 days of creation.
+        """
+        from django.utils import timezone
+        from datetime import timedelta
+
+        maturity_date = self.created_at + timedelta(days=1)
+
+        if timezone.now() >= maturity_date:
+            pending = self.withdrawable_amount - self.matured_amount
+            if pending > 0:
+                self.matured_amount += pending
+                self.save(update_fields=["matured_amount"])
+
     @property
     def available_for_withdrawal(self):
-        return max(Decimal('0'), self.withdrawable_amount - self.withdrawn_amount)
+        return max(Decimal('0'), self.matured_amount - self.withdrawn_amount)
 
     def __str__(self):
         return f"{self.agent.full_name} - {self.project.project_name} ({self.total_commission})"
