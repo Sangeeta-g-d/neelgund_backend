@@ -32,102 +32,7 @@ from django.db.models import Prefetch
 import logging
 from firebase_admin import messaging
 logger = logging.getLogger(__name__)
-
-
-def send_fcm_notification(user, title, body, data=None):
-    """
-    Send FCM notification to all user's devices
-    """
-    print("\n" + "="*50)
-    print("🔔 STARTING FCM NOTIFICATION PROCESS")
-    print("="*50)
-    print(f"📧 User Email: {user.email}")
-    print(f"📱 User ID: {user.id}")
-    print(f"📝 Title: {title}")
-    print(f"💬 Body: {body}")
-    print(f"📦 Data: {data}")
-    
-    device_tokens = user.device_tokens.all()
-    print(f"\n🔍 Querying device tokens for user...")
-    print(f"✅ Found {device_tokens.count()} device token(s)")
-    
-    if not device_tokens.exists():
-        print("❌ No device tokens found for this user")
-        logger.info(f"No device tokens found for user {user.email}")
-        print("="*50 + "\n")
-        return
-    
-    print("\n📋 Device Details:")
-    for idx, device in enumerate(device_tokens, 1):
-        print(f"  Device {idx}:")
-        print(f"    - Type: {device.device_type}")
-        print(f"    - Token (first 20 chars): {device.token[:20]}...")
-        print(f"    - Created: {device.created_at}")
-        print(f"    - Updated: {device.updated_at}")
-    
-    successful_sends = 0
-    failed_tokens = []
-    
-    print("\n📤 Sending notifications...")
-    for idx, device in enumerate(device_tokens, 1):
-        print(f"\n  Attempting send {idx}/{device_tokens.count()}:")
-        print(f"    Device Type: {device.device_type}")
-        try:
-            message = messaging.Message(
-                notification=messaging.Notification(
-                    title=title,
-                    body=body,
-                ),
-                data=data or {},
-                token=device.token,
-            )
-            
-            print(f"    📨 Calling Firebase messaging.send()...")
-            response = messaging.send(message)
-            successful_sends += 1
-            print(f"    ✅ SUCCESS! Response: {response}")
-            logger.info(f"Successfully sent notification to {device.device_type} device: {response}")
-            
-        except messaging.UnregisteredError as e:
-            # Token is invalid, delete it
-            print(f"    ⚠️  UNREGISTERED TOKEN ERROR")
-            print(f"    ❌ Token is invalid/unregistered: {str(e)}")
-            print(f"    🗑️  Marking token for deletion...")
-            logger.warning(f"Invalid token for {user.email}, deleting: {device.token}")
-            failed_tokens.append(device)
-            
-        except messaging.SenderIdMismatchError as e:
-            print(f"    ⚠️  SENDER ID MISMATCH ERROR")
-            print(f"    ❌ Error: {str(e)}")
-            logger.error(f"Sender ID mismatch for {user.email}: {str(e)}")
-            
-        except messaging.InvalidArgumentError as e:
-            print(f"    ⚠️  INVALID ARGUMENT ERROR")
-            print(f"    ❌ Error: {str(e)}")
-            logger.error(f"Invalid argument for {user.email}: {str(e)}")
-            
-        except Exception as e:
-            print(f"    ⚠️  UNEXPECTED ERROR")
-            print(f"    ❌ Error Type: {type(e).__name__}")
-            print(f"    ❌ Error Message: {str(e)}")
-            logger.error(f"Error sending notification to {user.email}: {str(e)}")
-    
-    # Clean up invalid tokens
-    if failed_tokens:
-        print(f"\n🗑️  Cleaning up {len(failed_tokens)} invalid token(s)...")
-        for device in failed_tokens:
-            print(f"    Deleting token: {device.token[:20]}...")
-            device.delete()
-            print(f"    ✅ Deleted")
-    
-    print(f"\n📊 SUMMARY:")
-    print(f"    Total Devices: {device_tokens.count()}")
-    print(f"    Successful Sends: {successful_sends}")
-    print(f"    Failed Sends: {device_tokens.count() - successful_sends}")
-    print(f"    Tokens Deleted: {len(failed_tokens)}")
-    
-    logger.info(f"Sent {successful_sends} notifications to {user.email}")
-    print("="*50 + "\n")
+from .notify import send_fcm_notification,send_fcm_notification_to_all_agents
 
 
 def admin_login(request):
@@ -466,6 +371,10 @@ def edit_project(request, project_id):
 
         try:
             with transaction.atomic():
+                # Store old phase for comparison
+                old_phase_id = project.current_phase_id
+                print(f"\n🔍 OLD PHASE ID: {old_phase_id}")
+                
                 # 1️⃣ Update main project details
                 project.project_id = data.get("project_id")
                 project.project_name = data.get("project_name")
@@ -489,7 +398,7 @@ def edit_project(request, project_id):
                 # 2️⃣ Update amenities
                 project.amenities.set(data.getlist("amenities"))
 
-                # 3️⃣ Update highlights (same as before)
+                # 3️⃣ Update highlights
                 highlight_ids = data.getlist("highlight_id[]")
                 highlight_titles = data.getlist("highlight_title[]")
                 highlight_subtitles = data.getlist("highlight_subtitle[]")
@@ -544,12 +453,23 @@ def edit_project(request, project_id):
 
                 project.payment_phases.exclude(id__in=existing_phase_ids).delete()
 
-                # 5️⃣ Update current phase (new)
-                current_phase_id = data.get("current_phase")
-                if current_phase_id:
-                    project.current_phase_id = current_phase_id
+                # 5️⃣ Update current phase
+                new_phase_id = data.get("current_phase")
+                print(f"🔍 NEW PHASE ID: {new_phase_id}")
+                
+                phase_changed = False
+                if new_phase_id:
+                    project.current_phase_id = new_phase_id
+                    # Check if phase actually changed
+                    if str(old_phase_id) != str(new_phase_id):
+                        phase_changed = True
+                        print("✅ PHASE CHANGED!")
                 else:
+                    if old_phase_id is not None:
+                        phase_changed = True
+                        print("✅ PHASE CLEARED!")
                     project.current_phase = None
+                
                 project.save()
 
                 # 6️⃣ Update plots
@@ -583,6 +503,47 @@ def edit_project(request, project_id):
                 project.plots.exclude(id__in=existing_plot_ids).delete()
 
                 toast_message = "✅ Project updated successfully!"
+
+            # 🔔 Send notification if phase changed
+            if phase_changed:
+                print("\n🔔 PHASE CHANGED - SENDING NOTIFICATIONS TO ALL AGENTS")
+                try:
+                    # Get the new phase details
+                    if project.current_phase:
+                        phase_name = project.current_phase.activity
+                        notification_title = "📢 Project Phase Updated"
+                        notification_body = f"{project.project_name} has moved to phase: {phase_name}"
+                        notification_data = {
+                            "type": "project_phase_update",
+                            "project_id": str(project.id),
+                            "project_name": project.project_name,
+                            "phase_id": str(project.current_phase.id),
+                            "phase_name": phase_name,
+                            "updated_at": timezone.now().isoformat(),
+                        }
+                    else:
+                        notification_title = "📢 Project Phase Cleared"
+                        notification_body = f"{project.project_name} phase has been cleared/reset"
+                        notification_data = {
+                            "type": "project_phase_cleared",
+                            "project_id": str(project.id),
+                            "project_name": project.project_name,
+                            "updated_at": timezone.now().isoformat(),
+                        }
+                    
+                    send_fcm_notification_to_all_agents(
+                        title=notification_title,
+                        body=notification_body,
+                        data=notification_data
+                    )
+                    print("✅ Notifications sent successfully")
+                    
+                except Exception as e:
+                    print(f"❌ ERROR sending notifications: {type(e).__name__} - {str(e)}")
+                    logger.error(f"Failed to send phase update notifications: {str(e)}")
+                    # Don't fail the entire update if notification fails
+            else:
+                print("ℹ️  Phase not changed - skipping notifications")
 
         except Exception as e:
             print("Error updating project:", e)
