@@ -29,6 +29,106 @@ from decimal import Decimal, ROUND_HALF_UP
 from agents.models import AgentCommission
 from .utils import login_required_nocache   
 from django.db.models import Prefetch
+import logging
+from firebase_admin import messaging
+logger = logging.getLogger(__name__)
+
+
+def send_fcm_notification(user, title, body, data=None):
+    """
+    Send FCM notification to all user's devices
+    """
+    print("\n" + "="*50)
+    print("🔔 STARTING FCM NOTIFICATION PROCESS")
+    print("="*50)
+    print(f"📧 User Email: {user.email}")
+    print(f"📱 User ID: {user.id}")
+    print(f"📝 Title: {title}")
+    print(f"💬 Body: {body}")
+    print(f"📦 Data: {data}")
+    
+    device_tokens = user.device_tokens.all()
+    print(f"\n🔍 Querying device tokens for user...")
+    print(f"✅ Found {device_tokens.count()} device token(s)")
+    
+    if not device_tokens.exists():
+        print("❌ No device tokens found for this user")
+        logger.info(f"No device tokens found for user {user.email}")
+        print("="*50 + "\n")
+        return
+    
+    print("\n📋 Device Details:")
+    for idx, device in enumerate(device_tokens, 1):
+        print(f"  Device {idx}:")
+        print(f"    - Type: {device.device_type}")
+        print(f"    - Token (first 20 chars): {device.token[:20]}...")
+        print(f"    - Created: {device.created_at}")
+        print(f"    - Updated: {device.updated_at}")
+    
+    successful_sends = 0
+    failed_tokens = []
+    
+    print("\n📤 Sending notifications...")
+    for idx, device in enumerate(device_tokens, 1):
+        print(f"\n  Attempting send {idx}/{device_tokens.count()}:")
+        print(f"    Device Type: {device.device_type}")
+        try:
+            message = messaging.Message(
+                notification=messaging.Notification(
+                    title=title,
+                    body=body,
+                ),
+                data=data or {},
+                token=device.token,
+            )
+            
+            print(f"    📨 Calling Firebase messaging.send()...")
+            response = messaging.send(message)
+            successful_sends += 1
+            print(f"    ✅ SUCCESS! Response: {response}")
+            logger.info(f"Successfully sent notification to {device.device_type} device: {response}")
+            
+        except messaging.UnregisteredError as e:
+            # Token is invalid, delete it
+            print(f"    ⚠️  UNREGISTERED TOKEN ERROR")
+            print(f"    ❌ Token is invalid/unregistered: {str(e)}")
+            print(f"    🗑️  Marking token for deletion...")
+            logger.warning(f"Invalid token for {user.email}, deleting: {device.token}")
+            failed_tokens.append(device)
+            
+        except messaging.SenderIdMismatchError as e:
+            print(f"    ⚠️  SENDER ID MISMATCH ERROR")
+            print(f"    ❌ Error: {str(e)}")
+            logger.error(f"Sender ID mismatch for {user.email}: {str(e)}")
+            
+        except messaging.InvalidArgumentError as e:
+            print(f"    ⚠️  INVALID ARGUMENT ERROR")
+            print(f"    ❌ Error: {str(e)}")
+            logger.error(f"Invalid argument for {user.email}: {str(e)}")
+            
+        except Exception as e:
+            print(f"    ⚠️  UNEXPECTED ERROR")
+            print(f"    ❌ Error Type: {type(e).__name__}")
+            print(f"    ❌ Error Message: {str(e)}")
+            logger.error(f"Error sending notification to {user.email}: {str(e)}")
+    
+    # Clean up invalid tokens
+    if failed_tokens:
+        print(f"\n🗑️  Cleaning up {len(failed_tokens)} invalid token(s)...")
+        for device in failed_tokens:
+            print(f"    Deleting token: {device.token[:20]}...")
+            device.delete()
+            print(f"    ✅ Deleted")
+    
+    print(f"\n📊 SUMMARY:")
+    print(f"    Total Devices: {device_tokens.count()}")
+    print(f"    Successful Sends: {successful_sends}")
+    print(f"    Failed Sends: {device_tokens.count() - successful_sends}")
+    print(f"    Tokens Deleted: {len(failed_tokens)}")
+    
+    logger.info(f"Sent {successful_sends} notifications to {user.email}")
+    print("="*50 + "\n")
+
 
 def admin_login(request):
     if request.user.is_authenticated:
@@ -808,27 +908,83 @@ def withdrawal_requests(request):
 
     return render(request, 'withdrawal_requests.html', context)
 
-
 @require_POST
 def approve_withdrawal(request, pk):
+    print("\n" + "="*60)
+    print("💰 WITHDRAWAL APPROVAL PROCESS STARTED")
+    print("="*60)
+    print(f"🆔 Withdrawal ID: {pk}")
+    print(f"👤 Approved by: {request.user.email if request.user.is_authenticated else 'Unknown'}")
+    
     withdrawal = get_object_or_404(CommissionWithdrawal, id=pk)
+    print(f"✅ Withdrawal object found")
+    print(f"    Amount: ₹{withdrawal.amount}")
+    print(f"    Status: {'Already Approved' if withdrawal.approved else 'Pending'}")
 
     if withdrawal.approved:
+        print("⚠️  Withdrawal already approved - redirecting")
         messages.info(request, "This withdrawal has already been approved.")
+        print("="*60 + "\n")
         return redirect('withdrawal_requests')
 
+    print("\n🔄 Starting database transaction...")
     with transaction.atomic():
+        print("    Updating withdrawal status...")
         withdrawal.approved = True
         withdrawal.approved_at = timezone.now()
         withdrawal.save()
+        print(f"    ✅ Withdrawal approved at: {withdrawal.approved_at}")
 
         commission = withdrawal.commission
         amount = withdrawal.amount
+        
+        print(f"\n    📊 Commission Details (BEFORE):")
+        print(f"        Withdrawable: ₹{commission.withdrawable_amount}")
+        print(f"        Withdrawn: ₹{commission.withdrawn_amount}")
+        commission.matured_amount = max(Decimal('0'), commission.matured_amount - amount)
+
         commission.withdrawable_amount = max(Decimal('0'), commission.withdrawable_amount - amount)
         commission.withdrawn_amount += amount
         commission.save()
+        
+        print(f"\n    📊 Commission Details (AFTER):")
+        print(f"        Withdrawable: ₹{commission.withdrawable_amount}")
+        print(f"        Withdrawn: ₹{commission.withdrawn_amount}")
+        print("    ✅ Commission updated successfully")
 
+    print("\n🔔 Preparing to send FCM notification...")
+    # Send FCM notification to the agent
+    agent_user = commission.agent  # Assuming agent is the CustomUser
+    print(f"    Agent: {agent_user.full_name if hasattr(agent_user, 'full_name') else agent_user.email}")
+    print(f"    Agent Email: {agent_user.email}")
+    
+    notification_title = "Withdrawal Approved ✅"
+    notification_body = f"Your withdrawal request of ₹{amount} has been approved and will be processed shortly."
+    notification_data = {
+        "type": "withdrawal_approved",
+        "withdrawal_id": str(withdrawal.id),
+        "amount": str(amount),
+        "approved_at": withdrawal.approved_at.isoformat(),
+    }
+    
+    print("\n📲 Calling send_fcm_notification()...")
+    try:
+        send_fcm_notification(
+            user=agent_user,
+            title=notification_title,
+            body=notification_body,
+            data=notification_data
+        )
+        print("✅ Notification process completed")
+    except Exception as e:
+        print(f"❌ ERROR in notification process: {type(e).__name__}")
+        print(f"   Message: {str(e)}")
+        logger.error(f"Failed to send notification: {str(e)}")
+
+    print(f"\n✅ SUCCESS MESSAGE")
     messages.success(request, f"Withdrawal of ₹{withdrawal.amount} for {commission.agent.full_name} approved successfully.")
+    print("🔄 Redirecting to withdrawal_requests...")
+    print("="*60 + "\n")
     return redirect('withdrawal_requests')
 
 @login_required_nocache
