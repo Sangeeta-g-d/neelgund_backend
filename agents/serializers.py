@@ -103,6 +103,7 @@ class LeadDetailSerializer(serializers.ModelSerializer):
 
         return [
             {
+                
                 "assigned_id": lp.id,
                 "id": lp.project.id,
                 "project_id": lp.project.project_id,
@@ -116,6 +117,7 @@ class LeadDetailSerializer(serializers.ModelSerializer):
                 "plot_assigned": lp.assigned_plots.exists(),
                 "assigned_plots": [
                     {
+                        "assigned_id": ap.id,
                         "plot_id": ap.plot.id,
                         "plot_no": ap.plot.plot_no,
                         "size": ap.plot.size,

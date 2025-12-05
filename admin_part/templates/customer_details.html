@@ -107,15 +107,35 @@
     <td>{{ assignment.plot.plot_no }}</td>
     <td>{{ assignment.plot.area }} sq.ft</td>
 
-    <td>
-      <span class="badge
-        {% if assignment.status == 'in_progress' %}bg-warning
-        {% elif assignment.status == 'closed' %}bg-success
-        {% elif assignment.status == 'cancelled' %}bg-danger
-        {% endif %}">
-        {{ assignment.get_status_display }}
-      </span>
-    </td>
+   <td>
+  <div class="dropdown">
+    <button class="btn btn-sm 
+      {% if assignment.status == 'in_progress' %}btn-warning
+      {% elif assignment.status == 'closed' %}btn-success
+      {% elif assignment.status == 'cancelled' %}btn-danger
+      {% else %}btn-secondary{% endif %}
+      dropdown-toggle" 
+      type="button" 
+      data-bs-toggle="dropdown"
+      data-assignment-id="{{ assignment.id }}"
+      data-current-status="{{ assignment.status }}">
+      {{ assignment.get_status_display }}
+    </button>
+    
+    <ul class="dropdown-menu">
+      {% for status_value, status_label in plot_status_choices %}
+      <li>
+        <a class="dropdown-item status-option" 
+           href="#" 
+           data-status="{{ status_value }}"
+           data-assignment-id="{{ assignment.id }}">
+          {{ status_label }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</td>
 
     <td>{{ assignment.remarks|default:"-" }}</td>
 
@@ -294,6 +314,100 @@ document.addEventListener("DOMContentLoaded", () => {
       const cookies = document.cookie.split(';');
       for (let cookie of cookies) {
         cookie = cookie.trim();
+        if (cookie.startsWith(name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+});
+
+
+// Status Update Functionality
+document.addEventListener('DOMContentLoaded', function() {
+  // Handle status dropdown clicks
+  document.querySelectorAll('.status-option').forEach(item => {
+    item.addEventListener('click', async function(e) {
+      e.preventDefault();
+      
+      const assignmentId = this.getAttribute('data-assignment-id');
+      const newStatus = this.getAttribute('data-status');
+      const statusLabel = this.textContent.trim();
+      const button = this.closest('td').querySelector('.dropdown-toggle');
+      
+      // Show confirmation
+      const confirmUpdate = confirm(`Change status to "${statusLabel}"?`);
+      if (!confirmUpdate) return;
+      
+      try {
+        const response = await fetch(`/api/customers/update-plot-status/${assignmentId}/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({ status: newStatus })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Update button appearance and text
+          button.textContent = data.status_display;
+          
+          // Update button class based on status
+          button.classList.remove('btn-warning', 'btn-success', 'btn-danger', 'btn-secondary');
+          
+          if (newStatus === 'in_progress') {
+            button.classList.add('btn-warning');
+          } else if (newStatus === 'closed') {
+            button.classList.add('btn-success');
+          } else if (newStatus === 'cancelled') {
+            button.classList.add('btn-danger');
+          } else {
+            button.classList.add('btn-secondary');
+          }
+          
+          Toastify({
+            text: data.message,
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "#28a745",
+          }).showToast();
+          
+          // Update the button's data attribute
+          button.setAttribute('data-current-status', newStatus);
+        } else {
+          Toastify({
+            text: data.message,
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "#dc3545",
+          }).showToast();
+        }
+      } catch (error) {
+        Toastify({
+          text: "Error updating status. Please try again.",
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "#dc3545",
+        }).showToast();
+      }
+    });
+  });
+  
+  // Helper function to get CSRF token
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
         if (cookie.startsWith(name + '=')) {
           cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
           break;

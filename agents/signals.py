@@ -1,6 +1,6 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from .models import Lead, LeadProject, LeadPlotAssignment
+from .models import Lead, LeadProject, LeadPlotAssignment,Customer
 
 
 # 1️⃣ When any plot status changes, update its parent project
@@ -32,34 +32,36 @@ def update_project_status_on_plot_change(sender, instance, **kwargs):
     lead_project.save(update_fields=['status'])
 
 
-# 2️⃣ When any project status changes, update its parent lead
+# 2️⃣ When any project status changes, update its parent Customer
 @receiver([post_save, post_delete], sender=LeadProject)
-def update_lead_status_on_project_change(sender, instance, **kwargs):
-    lead = instance.lead
-    projects = lead.lead_projects.all()
-
-    if not projects.exists():
-        lead.status = 'new'
-
-    else:
-        # If any project is in_progress or visited → lead = in_progress
-        if projects.filter(status__in=['in_progress', 'visited']).exists():
-            lead.status = 'in_progress'
-
-        # If all projects closed → lead = closed
-        elif projects.exclude(status='closed').count() == 0:
-            lead.status = 'closed'
-
-        # If all cancelled → lead = cancelled
-        elif projects.exclude(status='cancelled').count() == 0:
-            lead.status = 'cancelled'
-
-        # Otherwise remain in_progress
+def update_customer_status_on_project_change(sender, instance, **kwargs):
+    if instance.customer:
+        customer = instance.customer
+        projects = customer.customer_projects.all()
+        
+        # If customer has no projects at all
+        if not projects.exists():
+            customer.status = 'in_progress'  # or whatever default you prefer
+        
         else:
-            lead.status = 'in_progress'
-
-    lead.save(update_fields=['status'])
-
+            # Get counts of different project statuses
+            closed_count = projects.filter(status='closed').count()
+            cancelled_count = projects.filter(status='cancelled').count()
+            total_count = projects.count()
+            
+            # If ALL projects are closed → customer = closed
+            if closed_count == total_count:
+                customer.status = 'closed'
+            
+            # If ALL projects are cancelled → customer = cancelled
+            elif cancelled_count == total_count:
+                customer.status = 'cancelled'
+            
+            # Otherwise → customer = in_progress
+            else:
+                customer.status = 'in_progress'
+        
+        customer.save(update_fields=['status'])
 
 
 

@@ -159,7 +159,7 @@ class LeadPlotAssignment(models.Model):
     status = models.CharField(
         max_length=50,
         choices=PLOT_STATUS_CHOICES,
-        default='booked'
+        default='in_progress'
     )
     remarks = models.TextField(blank=True, null=True)
     assigned_at = models.DateTimeField(auto_now_add=True)

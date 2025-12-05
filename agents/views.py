@@ -465,7 +465,6 @@ class AssignPlotsToLeadProjectAPIView(APIView):
                     lead_project=lead_project,
                     plot=plot,
                     defaults={
-                        "status": "booked",
                         "assigned_by": agent,
                         "remarks": remarks,
                         "order_id": order_id,
@@ -493,7 +492,8 @@ class AssignPlotsToLeadProjectAPIView(APIView):
 
         # ✅ Return all assigned plots for that lead project
         assigned_plots = [
-            {
+            {   
+                "assigned_id": ap.id,
                 "id": ap.plot.id,
                 "plot_no": ap.plot.plot_no,
                 "status": ap.status,
@@ -512,6 +512,66 @@ class AssignPlotsToLeadProjectAPIView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class RemoveAssignedPlotAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, assignment_id):
+        """
+        Reverse a plot assignment:
+        - Make plot available again
+        - Delete assignment
+        - Delete commission record
+        """
+        agent = request.user
+
+        # Ensure this assignment belongs to this agent
+        assignment = get_object_or_404(
+            LeadPlotAssignment.objects.select_related("lead_project", "plot"),
+            id=assignment_id,
+            lead_project__lead__agent=agent
+        )
+
+        # Optional: prevent removing after closure
+        if assignment.status in ["closed", "cancelled"]:
+            return Response(
+                {
+                    "status_code": 400,
+                    "status": "error",
+                    "message": f"Cannot remove plot because the status is '{assignment.status}'."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        with transaction.atomic():
+            plot = assignment.plot
+            project = assignment.lead_project.project
+
+            # 1️⃣ Make plot available again
+            plot.is_available = True
+            plot.save(update_fields=["is_available"])
+
+            # 2️⃣ Delete agent commission
+            AgentCommission.objects.filter(
+                lead_plot=assignment,
+                agent=agent,
+                project=project
+            ).delete()
+
+            # 3️⃣ Delete assignment
+            assignment.delete()
+
+        return Response(
+            {
+                "status_code": 200,
+                "status": "success",
+                "message": "Plot removed from lead project successfully and reversed."
+            },
+            status=status.HTTP_200_OK
+        )
+
+
 
 # change plot status
 class UpdatePlotAssignmentStatusAPIView(APIView):

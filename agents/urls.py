@@ -18,6 +18,8 @@ urlpatterns = [
     # assign plot to lead
     path('available-plots/<int:project_id>/', AvailablePlotsAPIView.as_view(), name='available-plots'),
     path('assign-plot/<int:pk>/', AssignPlotsToLeadProjectAPIView.as_view(), name='assign-plot'),
+    path("remove-assigned-plot/<int:assignment_id>/", RemoveAssignedPlotAPIView.as_view()),
+
 
     path('update-plot-status/<int:pk>/',UpdatePlotAssignmentStatusAPIView.as_view(),name="update-plot-status"),
 

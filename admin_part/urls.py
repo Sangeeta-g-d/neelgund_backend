@@ -41,6 +41,10 @@ urlpatterns = [
     path('projects/<int:project_id>/delete-map-layout/', views.delete_project_map_layout, name='delete_project_map_layout'),
     path('logout/', views.logout_view, name='logout'),
 
+    path('api/customers/update-plot-status/<int:assignment_id>/', 
+         views.update_plot_status, 
+         name='update_plot_status'),
+
 
     path("forgot-password/",
          auth_views.PasswordResetView.as_view(

@@ -79,11 +79,13 @@ def admin_dashboard(request):
     projects_count = RealEstateProject.objects.count()
     agents_qs = CustomUser.objects.filter(is_staff=False)
     agents_count = agents_qs.count()
-    leads_count = Lead.objects.count()
+    leads_count = Lead.objects.exclude(status='booked').count()
     plots_count = PlotInventory.objects.count()
+    # New: customers count
+    customers_count = Customer.objects.count()
 
     # Recent items
-    recent_leads = Lead.objects.select_related('agent').order_by('-created_at')[:5]
+    recent_leads = Lead.objects.select_related('agent').exclude(status='booked').order_by('-created_at')[:5]
     recent_agents = agents_qs.order_by('-date_joined')[:5]
     recent_projects = RealEstateProject.objects.order_by('-created_at')[:5]
 
@@ -97,6 +99,7 @@ def admin_dashboard(request):
     context = {
         'projects_count': projects_count,
         'agents_count': agents_count,
+        'customers_count': customers_count,
         'leads_count': leads_count,
         'plots_count': plots_count,
         'recent_leads': recent_leads,
@@ -668,11 +671,62 @@ def customer_details(request, customer_id):
         for assignment in cp.assigned_plots.all():
             assignment.assigned_at_ist = assignment.assigned_at.astimezone(ist)
 
+    # Get status choices for LeadPlotAssignmentfrom your_app.models import LeadPlotAssignment  # Import your model
+    plot_status_choices = LeadPlotAssignment.PLOT_STATUS_CHOICES
+
     context = {
         "customer": customer,
-        "customer_projects": customer_projects
+        "customer_projects": customer_projects,
+        "plot_status_choices": plot_status_choices,  # Add this
     }
     return render(request, "customer_details.html", context)
+
+
+@login_required_nocache
+@require_POST
+def update_plot_status(request, assignment_id):
+    try:
+        assignment = LeadPlotAssignment.objects.get(id=assignment_id)
+        
+        # Check if user has permission to edit this assignment
+        # You might want to add more specific permission checks
+        if not request.user.is_superuser and assignment.assigned_by != request.user:
+            return JsonResponse({
+                'success': False,
+                'message': 'You do not have permission to update this plot.'
+            }, status=403)
+        
+        data = json.loads(request.body)
+        new_status = data.get('status')
+        
+        if new_status not in dict(LeadPlotAssignment.PLOT_STATUS_CHOICES):
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid status.'
+            }, status=400)
+        
+        # Update the status
+        assignment.status = new_status
+        assignment.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Plot status updated successfully!',
+            'new_status': new_status,
+            'status_display': assignment.get_status_display()
+        })
+        
+    except LeadPlotAssignment.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Plot assignment not found.'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error updating status: {str(e)}'
+        }, status=500)
+
 
 @csrf_exempt
 @login_required_nocache
