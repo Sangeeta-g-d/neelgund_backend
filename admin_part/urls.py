@@ -77,4 +77,6 @@ urlpatterns = [
          ),
          name="password_reset_complete"),
 
+    path('privacy/', views.privacy, name='privacy'),
+
 ]

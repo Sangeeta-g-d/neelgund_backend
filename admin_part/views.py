@@ -1095,3 +1095,7 @@ def add_agent(request):
 def logout_view(request):
     logout(request)
     return redirect('/')
+
+
+def privacy(request):
+    return render(request, 'privacy.html')
