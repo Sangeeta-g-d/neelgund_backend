@@ -78,5 +78,6 @@ urlpatterns = [
          name="password_reset_complete"),
 
     path('privacy/', views.privacy, name='privacy'),
+    path('delete-account/', views.delete_account, name='delete_account'),
 
 ]

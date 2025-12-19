@@ -1099,3 +1099,56 @@ def logout_view(request):
 
 def privacy(request):
     return render(request, 'privacy.html')
+
+
+
+def delete_account(request):
+    if request.method == "POST":
+        email = request.POST.get("email")
+        password = request.POST.get("password")
+        
+        # Get the current user
+        current_user = request.user
+        
+        # Check if the provided email matches the logged-in user's email
+        if email != current_user.email:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'The email does not match your account email.'
+                })
+            else:
+                messages.error(request, "The email does not match your account email.")
+                return render(request, "delete_account.html")
+        
+        # Authenticate with provided credentials
+        # Note: For CustomUser with email as username, use email as username parameter
+        user = authenticate(request, username=email, password=password)
+        
+        if user is not None and user == current_user:
+            # Delete the user account
+            user.delete()
+            logout(request)
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Your account has been deleted successfully.',
+                    'redirect': '/login/'  # Change to your actual login URL
+                })
+            else:
+                messages.success(request, "Your account has been deleted successfully.")
+                return redirect("login")
+        else:
+            # Invalid credentials
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Invalid email or password.'
+                })
+            else:
+                messages.error(request, "Invalid email or password.")
+                return render(request, "delete_account.html")
+    
+    # If GET request, render the delete account page
+    return render(request, "delete_account.html")

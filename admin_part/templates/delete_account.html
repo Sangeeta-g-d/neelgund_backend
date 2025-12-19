@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Delete Account</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Toastify CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <style>
+        :root {
+            --primary-red: #e74c3c;
+            --dark-red: #c0392b;
+            --light-red: #ffebee;
+            --gray-light: #f5f7fa;
+            --gray-dark: #333;
+            --gray-medium: #777;
+            --shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            --shadow-heavy: 0 12px 32px rgba(231, 76, 60, 0.15);
+            --border-radius: 12px;
+            --transition: all 0.3s ease;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #fdfcfb 0%, #f5f7fa 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray-dark);
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 480px;
+            background: #fff;
+            padding: 40px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(231, 76, 60, 0.1);
+            transform: translateY(0);
+            transition: var(--transition);
+        }
+        
+        .container:hover {
+            box-shadow: var(--shadow-heavy);
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(231, 76, 60, 0.1);
+        }
+        
+        .header-icon {
+            background: var(--light-red);
+            color: var(--primary-red);
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 18px;
+            font-size: 24px;
+        }
+        
+        .header-text h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--gray-dark);
+            margin-bottom: 4px;
+        }
+        
+        .header-text p {
+            color: var(--gray-medium);
+            font-size: 15px;
+        }
+        
+        .warning-box {
+            background: var(--light-red);
+            border-left: 4px solid var(--primary-red);
+            padding: 18px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: flex-start;
+        }
+        
+        .warning-icon {
+            color: var(--primary-red);
+            margin-right: 12px;
+            font-size: 20px;
+            margin-top: 2px;
+        }
+        
+        .warning-text h4 {
+            color: var(--dark-red);
+            font-size: 16px;
+            margin-bottom: 6px;
+        }
+        
+        .warning-text p {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .messages {
+            margin-bottom: 20px;
+            transition: var(--transition);
+        }
+        
+        .message {
+            padding: 14px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .message.error {
+            background: rgba(231, 76, 60, 0.1);
+            color: var(--dark-red);
+            border-left: 4px solid var(--primary-red);
+        }
+        
+        .message.success {
+            background: rgba(46, 204, 113, 0.1);
+            color: #27ae60;
+            border-left: 4px solid #27ae60;
+        }
+        
+        .message i {
+            margin-right: 10px;
+            font-size: 16px;
+        }
+        
+        .form-group {
+            margin-bottom: 24px;
+            position: relative;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--gray-dark);
+            font-size: 15px;
+        }
+        
+        .input-with-icon {
+            position: relative;
+        }
+        
+        .input-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-medium);
+            z-index: 1;
+        }
+        
+        input {
+            width: 100%;
+            padding: 16px 16px 16px 48px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: var(--transition);
+            background: #fcfcfc;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: var(--primary-red);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+        }
+        
+        .input-hint {
+            font-size: 13px;
+            color: var(--gray-medium);
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .input-hint i {
+            margin-right: 6px;
+            font-size: 12px;
+        }
+        
+        .btn-delete {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, var(--primary-red), var(--dark-red));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10px;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-delete i {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+        
+        .btn-delete:hover {
+            background: linear-gradient(135deg, var(--dark-red), #a93226);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
+        }
+        
+        .btn-delete:active {
+            transform: translateY(0);
+        }
+        
+        .footer-note {
+            text-align: center;
+            margin-top: 28px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: var(--gray-medium);
+            font-size: 14px;
+        }
+        
+        .footer-note a {
+            color: var(--primary-red);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .footer-note a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Confirmation overlay */
+        .confirmation-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .confirmation-box {
+            background: white;
+            padding: 40px;
+            border-radius: var(--border-radius);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+            animation: slideUp 0.4s ease;
+        }
+        
+        .confirmation-box h3 {
+            color: var(--dark-red);
+            margin-bottom: 16px;
+            font-size: 24px;
+        }
+        
+        .confirmation-box p {
+            margin-bottom: 28px;
+            line-height: 1.6;
+            color: var(--gray-medium);
+        }
+        
+        .confirmation-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .btn-cancel, .btn-confirm {
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            font-size: 16px;
+        }
+        
+        .btn-cancel {
+            background: #f0f0f0;
+            color: var(--gray-dark);
+        }
+        
+        .btn-cancel:hover {
+            background: #e0e0e0;
+        }
+        
+        .btn-confirm {
+            background: var(--primary-red);
+            color: white;
+        }
+        
+        .btn-confirm:hover {
+            background: var(--dark-red);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(231, 76, 60, 0.3);
+        }
+        
+        /* Toastify Custom Styling */
+        .toastify {
+            border-radius: 8px;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 16px 20px;
+            min-height: auto;
+            font-weight: 500;
+        }
+        
+        .toastify-error {
+            background: linear-gradient(135deg, var(--primary-red), var(--dark-red));
+        }
+        
+        .toastify-success {
+            background: linear-gradient(135deg, #27ae60, #219653);
+        }
+        
+        /* Loading overlay */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 101;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        /* Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .shake {
+            animation: shake 0.5s ease;
+        }
+        
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 24px;
+            }
+            
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .header-icon {
+                margin-right: 0;
+                margin-bottom: 16px;
+            }
+            
+            .confirmation-actions {
+                flex-direction: column;
+            }
+            
+            .btn-cancel, .btn-confirm {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="header-text">
+                <h2>Delete Account</h2>
+                <p>Permanent account removal</p>
+            </div>
+        </div>
+        
+        <div class="warning-box">
+            <div class="warning-icon">
+                <i class="fas fa-radiation-alt"></i>
+            </div>
+            <div class="warning-text">
+                <h4>Irreversible Action</h4>
+                <p>Once deleted, all your data will be permanently removed. This includes your profile, content, and any associated information. This action cannot be undone.</p>
+            </div>
+        </div>
+        
+        <!-- Django messages display (backup for non-JS users) -->
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message {% if message.tags %}{{ message.tags }}{% endif %}">
+                    <i class="fas fa-{% if message.tags == 'error' %}exclamation-circle{% else %}check-circle{% endif %}"></i>
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <form method="POST" id="deleteForm">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <div class="input-with-icon">
+                    <div class="input-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <input type="email" name="email" id="email" placeholder="your.email@example.com" required value="{{ user.email|default:'' }}">
+                </div>
+                <div class="input-hint">
+                    <i class="fas fa-info-circle"></i>
+                    Must match the email associated with your account
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <div class="input-with-icon">
+                    <div class="input-icon">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <input type="password" name="password" id="password" placeholder="Enter your current password" required>
+                </div>
+                <div class="input-hint">
+                    <i class="fas fa-info-circle"></i>
+                    Enter your password to confirm this action
+                </div>
+            </div>
+            
+            <button type="button" class="btn-delete" id="deleteButton">
+                <i class="fas fa-trash-alt"></i>
+                Delete My Account Permanently
+            </button>
+        </form>
+    </div>
+    
+    <!-- Confirmation Overlay -->
+    <div class="confirmation-overlay" id="confirmationOverlay">
+        <div class="confirmation-box">
+            <div class="header-icon" style="margin: 0 auto 20px; background: rgba(231, 76, 60, 0.1);">
+                <i class="fas fa-skull-crossbones" style="color: var(--primary-red);"></i>
+            </div>
+            <h3>Final Confirmation Required</h3>
+            <p>You are about to permanently delete your account and all associated data. This action <strong>cannot be undone</strong>. Are you absolutely sure you want to proceed?</p>
+            <div class="confirmation-actions">
+                <button type="button" class="btn-cancel" id="cancelDelete">No, Keep My Account</button>
+                <button type="button" class="btn-confirm" id="confirmDelete">Yes, Delete Permanently</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Toastify JS -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    
+    <script>
+        // DOM Elements
+        const deleteButton = document.getElementById('deleteButton');
+        const cancelButton = document.getElementById('cancelDelete');
+        const confirmButton = document.getElementById('confirmDelete');
+        const cancelLink = document.getElementById('cancelLink');
+        const confirmationOverlay = document.getElementById('confirmationOverlay');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const deleteForm = document.getElementById('deleteForm');
+        
+        // Show confirmation overlay when delete button is clicked
+        deleteButton.addEventListener('click', function() {
+            // First validate the form
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!email || !password) {
+                showToast('Please fill in both email and password fields.', 'error');
+                deleteForm.classList.add('shake');
+                
+                setTimeout(() => {
+                    deleteForm.classList.remove('shake');
+                }, 500);
+                
+                return;
+            }
+            
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showToast('Please enter a valid email address.', 'error');
+                return;
+            }
+            
+            // Show confirmation overlay
+            confirmationOverlay.style.display = 'flex';
+        });
+        
+        // Hide confirmation overlay when cancel is clicked
+        cancelButton.addEventListener('click', function() {
+            confirmationOverlay.style.display = 'none';
+        });
+        
+        // Submit form when confirmed
+        confirmButton.addEventListener('click', async function() {
+            // Hide confirmation overlay and show loading
+            confirmationOverlay.style.display = 'none';
+            loadingOverlay.style.display = 'flex';
+            
+            try {
+                // Get form data
+                const formData = new FormData(deleteForm);
+                
+                // Send AJAX request
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                });
+                
+                const result = await response.json();
+                
+                // Hide loading overlay
+                loadingOverlay.style.display = 'none';
+                
+                if (result.status === 'success') {
+                    // Show success toast
+                    showToast(result.message, 'success');
+                    
+                    // Redirect after a delay
+                    setTimeout(() => {
+                        window.location.href = result.redirect;
+                    }, 2000);
+                    
+                } else if (result.status === 'error') {
+                    // Show error toast
+                    showToast(result.message, 'error');
+                }
+                
+            } catch (error) {
+                // Hide loading overlay
+                loadingOverlay.style.display = 'none';
+                
+                // Show error toast
+                showToast('An error occurred. Please try again.', 'error');
+                console.error('Error:', error);
+            }
+        });
+        
+        // Cancel link behavior
+        cancelLink.addEventListener('click', function(e) {
+            // Default behavior will work as href is set
+        });
+        
+        // Close overlay when clicking outside the confirmation box
+        confirmationOverlay.addEventListener('click', function(e) {
+            if (e.target === confirmationOverlay) {
+                confirmationOverlay.style.display = 'none';
+            }
+        });
+        
+        // Show toast notification function
+        function showToast(message, type = 'info') {
+            const backgroundColor = type === 'error' ? 'linear-gradient(135deg, #e74c3c, #c0392b)' : 
+                                type === 'success' ? 'linear-gradient(135deg, #27ae60, #219653)' : 
+                                'linear-gradient(135deg, #3498db, #2980b9)';
+            
+            const icon = type === 'error' ? 'fas fa-exclamation-circle' : 
+                        type === 'success' ? 'fas fa-check-circle' : 
+                        'fas fa-info-circle';
+            
+            // Create toast with icon
+            const toast = Toastify({
+                text: `<i class="${icon}" style="margin-right: 10px;"></i> ${message}`,
+                duration: type === 'success' ? 3000 : 4000,
+                close: true,
+                gravity: "top",
+                position: "right",
+                backgroundColor: backgroundColor,
+                stopOnFocus: true,
+                escapeMarkup: false,
+                className: `toastify toastify-${type}`,
+                onClick: function() {
+                    toast.hideToast();
+                }
+            });
+            
+            toast.showToast();
+        }
+        
+        // Add visual feedback on input focus
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.parentElement.classList.add('focused');
+            });
+            
+            input.addEventListener('blur', function() {
+                this.parentElement.parentElement.classList.remove('focused');
+            });
+        });
+        
+        // Display any Django messages as toasts on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const djangoMessages = document.querySelectorAll('.messages .message');
+            djangoMessages.forEach(messageEl => {
+                const messageText = messageEl.querySelector('span').textContent;
+                const messageType = messageEl.classList.contains('error') ? 'error' : 
+                                  messageEl.classList.contains('success') ? 'success' : 'info';
+                
+                if (messageText) {
+                    setTimeout(() => {
+                        showToast(messageText, messageType);
+                    }, 300);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
