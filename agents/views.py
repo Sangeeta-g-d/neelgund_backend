@@ -633,6 +633,78 @@ class RemoveAssignedPlotAPIView(APIView):
         )
 
 
+# reassign plot
+class ReassignPlotAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def put(self, request, assignment_id):
+        """
+        Reassign an existing plot assignment to a different plot.
+        - Keep the same lead and lead_project
+        - Change the plot
+        - Make old plot available again
+        - Mark new plot as unavailable
+        """
+        agent = request.user
+        new_plot_id = request.data.get('new_plot_id')
+
+        if not new_plot_id:
+            return Response({
+                "status_code": 400,
+                "status": "error",
+                "message": "new_plot_id is required."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get the current assignment
+        assignment = get_object_or_404(
+            LeadPlotAssignment.objects.select_related("lead_project", "plot"),
+            id=assignment_id,
+            lead_project__lead__agent=agent
+        )
+
+        # Get the new plot
+        new_plot = get_object_or_404(PlotInventory, id=new_plot_id)
+
+        # Check if new plot is available
+        if not new_plot.is_available:
+            return Response({
+                "status_code": 400,
+                "status": "error",
+                "message": f"Plot {new_plot.plot_no} is not available for assignment."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if new plot belongs to the same project
+        if new_plot.project != assignment.lead_project.project:
+            return Response({
+                "status_code": 400,
+                "status": "error",
+                "message": "New plot must belong to the same project."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            old_plot = assignment.plot
+
+            # Update assignment with new plot
+            assignment.plot = new_plot
+            assignment.updated_at = timezone.now()
+            assignment.save(update_fields=['plot', 'updated_at'])
+
+            # Make old plot available again
+            old_plot.is_available = True
+            old_plot.save(update_fields=['is_available'])
+
+            # Make new plot unavailable
+            new_plot.is_available = False
+            new_plot.save(update_fields=['is_available'])
+
+        serializer = LeadPlotAssignmentSerializer(assignment)
+        return Response({
+            "status_code": 200,
+            "status": "success",
+            "message": f"Plot successfully reassigned from {old_plot.plot_no} to {new_plot.plot_no}.",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
 
 # change plot status
 class UpdatePlotAssignmentStatusAPIView(APIView):

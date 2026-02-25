@@ -30,6 +30,7 @@ urlpatterns = [
     path('lead_details/<int:lead_id>/',views.lead_details,name="lead_details"),
     path('edit_lead/<int:lead_id>/',views.edit_lead,name="edit_lead"),
     path('lead-plot-details/<int:assignment_id>/', views.lead_plot_detail, name='lead_plot_detail'),
+    path('reassign-plot/<int:assignment_id>/', views.reassign_plot, name='reassign_plot'),
 
 
     # withdraw requests

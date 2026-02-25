@@ -920,6 +920,81 @@ def lead_plot_detail(request, assignment_id):
     return render(request, 'lead_plot_detail.html', context)    
 
 
+@login_required_nocache
+def reassign_plot(request, assignment_id):
+    """
+    Admin page to reassign an existing plot to a different plot
+    """
+    assignment = get_object_or_404(
+        LeadPlotAssignment.objects.select_related('lead_project__lead', 'lead_project__project', 'plot'),
+        id=assignment_id
+    )
+
+    toast_message = None
+    toast_type = "error"
+    
+    # Get available plots for the same project
+    available_plots = PlotInventory.objects.filter(
+        project=assignment.lead_project.project,
+        is_available=True
+    ).exclude(id=assignment.plot.id).order_by('plot_no')
+
+    if request.method == "POST":
+        new_plot_id = request.POST.get('new_plot_id')
+        
+        if not new_plot_id:
+            toast_message = "Please select a new plot."
+            toast_type = "error"
+        else:
+            try:
+                new_plot = PlotInventory.objects.get(id=new_plot_id, project=assignment.lead_project.project)
+                
+                if not new_plot.is_available:
+                    toast_message = f"Plot {new_plot.plot_no} is no longer available."
+                    toast_type = "error"
+                else:
+                    # Perform the reassignment
+                    old_plot = assignment.plot
+                    assignment.plot = new_plot
+                    assignment.updated_at = timezone.now()
+                    assignment.save()
+
+                    # Make old plot available
+                    old_plot.is_available = True
+                    old_plot.save()
+
+                    # Make new plot unavailable
+                    new_plot.is_available = False
+                    new_plot.save()
+
+                    toast_message = f"Plot successfully reassigned from {old_plot.plot_no} to {new_plot.plot_no}!"
+                    toast_type = "success"
+                    
+                    # Refresh available plots
+                    available_plots = PlotInventory.objects.filter(
+                        project=assignment.lead_project.project,
+                        is_available=True
+                    ).exclude(id=assignment.plot.id).order_by('plot_no')
+
+            except PlotInventory.DoesNotExist:
+                toast_message = "Selected plot not found or does not belong to this project."
+                toast_type = "error"
+            except Exception as e:
+                toast_message = f"Error reassigning plot: {str(e)}"
+                toast_type = "error"
+
+    context = {
+        'assignment': assignment,
+        'lead': assignment.lead_project.lead,
+        'project': assignment.lead_project.project,
+        'current_plot': assignment.plot,
+        'available_plots': available_plots,
+        'toast_message': toast_message,
+        'toast_type': toast_type,
+    }
+    return render(request, 'reassign_plot.html', context)
+
+
 # withdraw request
 from django.utils import timezone
 import pytz

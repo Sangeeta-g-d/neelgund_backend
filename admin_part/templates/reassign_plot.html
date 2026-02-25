@@ -1,0 +1,276 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% block content %}
+
+<div class="container-fluid py-4">
+  <!-- Page header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h2 class="h4 mb-1 fw-bold text-dark">Reassign Plot</h2>
+      <p class="text-muted mb-0">Change assigned plot to a different available plot</p>
+    </div>
+    <div>
+      <a href="{% url 'lead_plot_detail' assignment.id %}" class="btn btn-outline-secondary rounded-3">
+        <i class="bi bi-arrow-left me-2"></i> Back
+      </a>
+    </div>
+  </div>
+
+  <!-- Toast Messages -->
+  {% if toast_message %}
+    <div class="alert alert-{{ toast_type }} alert-dismissible fade show rounded-4" role="alert">
+      <i class="bi bi-{% if toast_type == 'success' %}check-circle{% else %}exclamation-circle{% endif %} me-2"></i>
+      {{ toast_message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- Current Assignment Info -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm rounded-4 h-100">
+        <div class="card-header bg-light border-0 rounded-top-4">
+          <h5 class="mb-0 fw-bold text-dark">
+            <i class="bi bi-info-circle text-primary me-2"></i> Current Assignment
+          </h5>
+        </div>
+        <div class="card-body">
+          <!-- Lead Info -->
+          <div class="mb-3">
+            <label class="text-muted small">Lead</label>
+            <p class="mb-0 fw-semibold text-dark">{{ lead.full_name }}</p>
+            <small class="text-muted">{{ lead.contact_number }}</small>
+          </div>
+
+          <!-- Project Info -->
+          <div class="mb-3">
+            <label class="text-muted small">Project</label>
+            <p class="mb-0 fw-semibold text-dark">{{ project.project_name }}</p>
+            <small class="text-muted">{{ project.location }}</small>
+          </div>
+
+          <!-- Current Plot -->
+          <div class="mb-3">
+            <label class="text-muted small">Current Plot</label>
+            <div class="p-2 bg-primary bg-opacity-10 rounded-2 border border-primary border-opacity-25">
+              <p class="mb-1 fw-bold text-primary">Plot {{ current_plot.plot_no }}</p>
+              <small class="text-muted">Size: {{ current_plot.size }}</small><br>
+              <small class="text-muted">Area: {{ current_plot.area_sq }} sq ft</small><br>
+              <small class="text-muted">Price: {{ current_plot.price }}</small>
+            </div>
+          </div>
+
+          <!-- Assignment Status -->
+          <div class="mb-3">
+            <label class="text-muted small">Assignment Status</label>
+            {% if assignment.status == 'in_progress' %}
+              <span class="badge bg-info">In Progress</span>
+            {% elif assignment.status == 'closed' %}
+              <span class="badge bg-success">Closed</span>
+            {% elif assignment.status == 'cancelled' %}
+              <span class="badge bg-danger">Cancelled</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ assignment.get_status_display }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reassignment Form -->
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-light border-0 rounded-top-4">
+          <h5 class="mb-0 fw-bold text-dark">
+            <i class="bi bi-arrow-repeat text-success me-2"></i> Select New Plot
+          </h5>
+        </div>
+        <div class="card-body p-4">
+          {% if available_plots %}
+            <form method="POST" id="reassignForm" novalidate>
+              {% csrf_token %}
+
+              <div class="mb-4">
+                <label for="new_plot_id" class="form-label fw-semibold text-dark">Available Plots</label>
+                <select 
+                  class="form-select form-select-lg rounded-3" 
+                  id="new_plot_id" 
+                  name="new_plot_id" 
+                  required
+                  onchange="updatePlotDetails()">
+                  <option value="">-- Select a plot --</option>
+                  {% for plot in available_plots %}
+                    <option value="{{ plot.id }}" data-size="{{ plot.size }}" data-area="{{ plot.area_sq }}" data-price="{{ plot.price }}">
+                      Plot {{ plot.plot_no }} - {{ plot.size }} ({{ plot.area_sq }} sq ft) - ₹{{ plot.price }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <!-- Selected Plot Preview -->
+              <div class="mb-4" id="plotPreview" style="display: none;">
+                <label class="text-muted small">New Plot Details</label>
+                <div class="p-3 bg-success bg-opacity-10 rounded-3 border border-success border-opacity-25">
+                  <p class="mb-1 fw-semibold text-success">
+                    Plot <span id="selectedPlotNo">-</span>
+                  </p>
+                  <small class="text-muted">Size: <span id="selectedSize">-</span></small><br>
+                  <small class="text-muted">Area: <span id="selectedArea">-</span> sq ft</small><br>
+                  <small class="text-muted">Price: <span id="selectedPrice">-</span></small>
+                </div>
+              </div>
+
+              <!-- Remarks -->
+              <div class="mb-4">
+                <label for="remarks" class="form-label fw-semibold text-dark">Reassignment Remarks (Optional)</label>
+                <textarea 
+                  class="form-control form-control-lg rounded-3" 
+                  id="remarks" 
+                  name="remarks" 
+                  rows="3"
+                  placeholder="Add any notes about why this plot is being reassigned">{{ assignment.remarks }}</textarea>
+                <small class="text-muted d-block mt-2">Provide context for the reassignment</small>
+              </div>
+
+              <!-- Comparison Table -->
+              <div class="mb-4">
+                <label class="text-muted small fw-semibold">Comparison</label>
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Property</th>
+                        <th>Current Plot</th>
+                        <th>New Plot</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="fw-semibold">Plot No</td>
+                        <td>{{ current_plot.plot_no }}</td>
+                        <td id="compPlotNo">Select plot</td>
+                      </tr>
+                      <tr>
+                        <td class="fw-semibold">Size</td>
+                        <td>{{ current_plot.size }}</td>
+                        <td id="compSize">-</td>
+                      </tr>
+                      <tr>
+                        <td class="fw-semibold">Area</td>
+                        <td>{{ current_plot.area_sq }} sq ft</td>
+                        <td id="compArea">-</td>
+                      </tr>
+                      <tr>
+                        <td class="fw-semibold">Price</td>
+                        <td>{{ current_plot.price }}</td>
+                        <td id="compPrice">-</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="d-flex gap-2 justify-content-end pt-4 border-top">
+                <a href="{% url 'lead_plot_detail' assignment.id %}" class="btn btn-outline-secondary btn-lg rounded-3">
+                  <i class="bi bi-x-lg me-2"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-success btn-lg rounded-3">
+                  <i class="bi bi-arrow-repeat me-2"></i> Reassign Plot
+                </button>
+              </div>
+            </form>
+          {% else %}
+            <div class="alert alert-info rounded-3 text-center" role="alert">
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>No Available Plots</strong><br>
+              <small>There are no other available plots in {{ project.project_name }} to reassign to.</small>
+            </div>
+            <div class="text-center mt-4">
+              <a href="{% url 'lead_plot_detail' assignment.id %}" class="btn btn-outline-secondary rounded-3">
+                <i class="bi bi-arrow-left me-2"></i> Go Back
+              </a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+<style>
+  .form-control:focus,
+  .form-select:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+  }
+
+  .form-control,
+  .form-select {
+    border: 1px solid #e0e7ff;
+  }
+
+  .btn-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+  }
+
+  .btn-success:hover {
+    background: linear-gradient(135deg, #218838 0%, #17a2b8 100%);
+  }
+
+  .table-responsive {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 1rem;
+  }
+
+  .table {
+    margin: 0;
+  }
+</style>
+
+<script>
+  function updatePlotDetails() {
+    const select = document.getElementById('new_plot_id');
+    const selectedOption = select.options[select.selectedIndex];
+    
+    if (selectedOption.value === '') {
+      document.getElementById('plotPreview').style.display = 'none';
+      document.getElementById('compPlotNo').textContent = 'Select plot';
+      document.getElementById('compSize').textContent = '-';
+      document.getElementById('compArea').textContent = '-';
+      document.getElementById('compPrice').textContent = '-';
+    } else {
+      const plotNo = selectedOption.textContent.match(/Plot (\d+)/)[1];
+      const size = selectedOption.dataset.size;
+      const area = selectedOption.dataset.area;
+      const price = selectedOption.dataset.price;
+
+      document.getElementById('selectedPlotNo').textContent = plotNo;
+      document.getElementById('selectedSize').textContent = size;
+      document.getElementById('selectedArea').textContent = area;
+      document.getElementById('selectedPrice').textContent = price;
+
+      document.getElementById('compPlotNo').textContent = plotNo;
+      document.getElementById('compSize').textContent = size;
+      document.getElementById('compArea').textContent = area + ' sq ft';
+      document.getElementById('compPrice').textContent = price;
+
+      document.getElementById('plotPreview').style.display = 'block';
+    }
+  }
+
+  // Form validation
+  document.getElementById('reassignForm').addEventListener('submit', function(e) {
+    const select = document.getElementById('new_plot_id');
+    if (select.value === '') {
+      e.preventDefault();
+      alert('Please select a new plot to reassign to.');
+    }
+  });
+</script>
+
+{% endblock %}

@@ -191,27 +191,14 @@
                 </div>
               </div>
             </div>
-            <small class="text-muted d-block mt-2">Cannot be changed (contact admin if needed)</small>
           </div>
 
-          <div class="col-md-6">
-            <label class="form-label fw-semibold text-dark">Timestamps</label>
-            <div class="p-3 bg-light rounded-3 border border-light">
-              <div class="mb-2">
-                <small class="text-muted">Created:</small>
-                <p class="mb-0 fw-semibold text-dark">{{ lead.created_at|date:"d-m-Y H:i" }}</p>
-              </div>
-              <div>
-                <small class="text-muted">Last Updated:</small>
-                <p class="mb-0 fw-semibold text-dark">{{ lead.updated_at|date:"d-m-Y H:i" }}</p>
-              </div>
-            </div>
-          </div>
+      
         </div>
 
         <!-- Form Actions -->
         <div class="d-flex gap-2 justify-content-end pt-4 border-top">
-          <a href="{% url 'lead_details' lead.id %}" class="btn btn-outline-secondary btn-lg rounded-3">
+          <a href="{% url 'lead_list' %}" class="btn btn-outline-secondary btn-lg rounded-3">
             <i class="bi bi-x-lg me-2"></i> Cancel
           </a>
           <button type="submit" class="btn btn-primary btn-lg rounded-3">
