@@ -651,6 +651,42 @@ def lead_details(request, lead_id):
     }
     return render(request, 'lead_details.html', context)
 
+
+@login_required_nocache
+def edit_lead(request, lead_id):
+    lead = get_object_or_404(Lead, id=lead_id)
+    toast_message = None
+    toast_type = "error"
+
+    if request.method == "POST":
+        # Update lead details
+        lead.full_name = request.POST.get('full_name', lead.full_name)
+        lead.contact_number = request.POST.get('contact_number', lead.contact_number)
+        lead.email = request.POST.get('email', lead.email)
+        lead.dob = request.POST.get('dob') or lead.dob
+        lead.preferred_location = request.POST.get('preferred_location', lead.preferred_location)
+        lead.budget = request.POST.get('budget') or lead.budget
+        lead.city = request.POST.get('city', lead.city)
+        lead.status = request.POST.get('status', lead.status)
+        lead.notes = request.POST.get('notes', lead.notes)
+
+        try:
+            lead.save()
+            toast_message = "Lead updated successfully!"
+            toast_type = "success"
+        except Exception as e:
+            toast_message = f"Error updating lead: {str(e)}"
+            toast_type = "error"
+
+    context = {
+        'lead': lead,
+        'status_choices': Lead.STATUS_CHOICES,
+        'toast_message': toast_message,
+        'toast_type': toast_type,
+    }
+    return render(request, 'edit_lead.html', context)
+
+
 @login_required_nocache
 def customer_details(request, customer_id):
     customer = get_object_or_404(

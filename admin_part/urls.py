@@ -28,6 +28,7 @@ urlpatterns = [
 
     path('agents/<int:agent_id>/', views.agent_detail, name='agent_detail'),
     path('lead_details/<int:lead_id>/',views.lead_details,name="lead_details"),
+    path('edit_lead/<int:lead_id>/',views.edit_lead,name="edit_lead"),
     path('lead-plot-details/<int:assignment_id>/', views.lead_plot_detail, name='lead_plot_detail'),
 
 

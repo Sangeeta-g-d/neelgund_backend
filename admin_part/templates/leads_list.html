@@ -221,6 +221,9 @@
                       <a class="btn btn-sm btn-outline-primary rounded-3" href="{% url 'lead_details' lead.id %}" title="View Lead">
                         <i class="bi bi-eye"></i>
                       </a>
+                      <a class="btn btn-sm btn-outline-info rounded-3" href="{% url 'edit_lead' lead.id %}" title="Edit Lead">
+                        <i class="bi bi-pencil"></i>
+                      </a>
                       <button class="btn btn-sm btn-outline-danger rounded-3 delete-lead-btn"
                               data-lead-id="{{ lead.id }}" title="Delete Lead">
                         <i class="bi bi-trash"></i>

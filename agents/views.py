@@ -74,6 +74,67 @@ class LeadCreateAPIView(APIView):
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
+# edit lead
+class LeadUpdateAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def put(self, request, lead_id):
+        """
+        Update lead details (full update)
+        """
+        lead = get_object_or_404(Lead, id=lead_id, agent=request.user)
+        
+        data = request.data.copy()
+        
+        # Prevent changing agent
+        data.pop('agent', None)
+        
+        serializer = LeadSerializer(lead, data=data, partial=False, context={'request': request})
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "status_code": 200,
+                "status": "success",
+                "message": "Lead updated successfully",
+                "data": LeadListSerializer(lead).data
+            }, status=status.HTTP_200_OK)
+        
+        return Response({
+            "status_code": 400,
+            "status": "error",
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, lead_id):
+        """
+        Partial update of lead details
+        """
+        lead = get_object_or_404(Lead, id=lead_id, agent=request.user)
+        
+        data = request.data.copy()
+        
+        # Prevent changing agent
+        data.pop('agent', None)
+        
+        serializer = LeadSerializer(lead, data=data, partial=True, context={'request': request})
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "status_code": 200,
+                "status": "success",
+                "message": "Lead updated successfully",
+                "data": LeadListSerializer(lead).data
+            }, status=status.HTTP_200_OK)
+        
+        return Response({
+            "status_code": 400,
+            "status": "error",
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
 # update lead status
 class LeadStatusUpdateAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
