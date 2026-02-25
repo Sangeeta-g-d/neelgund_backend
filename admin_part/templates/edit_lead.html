@@ -134,19 +134,29 @@
             <small class="text-muted d-block mt-1">Lead's budget in rupees</small>
           </div>
 
-          <!-- Status -->
+          <!-- Status (Read-only) -->
           <div class="col-md-6">
-            <label for="status" class="form-label fw-semibold text-dark">Status</label>
-            <select 
-              class="form-select form-select-lg rounded-3" 
-              id="status" 
-              name="status" 
-              required>
-              {% for value, label in status_choices %}
-                <option value="{{ value }}" {% if lead.status == value %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-            <small class="text-muted d-block mt-1">Lead status</small>
+            <label class="form-label fw-semibold text-dark">Status</label>
+            <div class="p-3 bg-light rounded-3 border border-light">
+              <p class="mb-0 fw-semibold text-dark">
+                {% if lead.status == 'not_contacted' %}
+                  <span class="badge bg-secondary">Not Contacted</span>
+                {% elif lead.status == 'interest_or_lost' %}
+                  <span class="badge bg-info">Interest / Lost</span>
+                {% elif lead.status == 'ready_for_visit' %}
+                  <span class="badge bg-warning">Ready for Visit</span>
+                {% elif lead.status == 'visit_completed' %}
+                  <span class="badge bg-primary">Visit Completed</span>
+                {% elif lead.status == 'looking_other_location' %}
+                  <span class="badge bg-danger">Looking Other Location</span>
+                {% elif lead.status == 'booked' %}
+                  <span class="badge bg-success">Booked</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ lead.get_status_display }}</span>
+                {% endif %}
+              </p>
+            </div>
+            <small class="text-muted d-block mt-1">Status can only be changed through lead detail page</small>
           </div>
         </div>
 

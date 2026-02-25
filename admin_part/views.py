@@ -659,7 +659,7 @@ def edit_lead(request, lead_id):
     toast_type = "error"
 
     if request.method == "POST":
-        # Update lead details
+        # Update lead details (excluding status and agent)
         lead.full_name = request.POST.get('full_name', lead.full_name)
         lead.contact_number = request.POST.get('contact_number', lead.contact_number)
         lead.email = request.POST.get('email', lead.email)
@@ -667,7 +667,6 @@ def edit_lead(request, lead_id):
         lead.preferred_location = request.POST.get('preferred_location', lead.preferred_location)
         lead.budget = request.POST.get('budget') or lead.budget
         lead.city = request.POST.get('city', lead.city)
-        lead.status = request.POST.get('status', lead.status)
         lead.notes = request.POST.get('notes', lead.notes)
 
         try:
@@ -680,7 +679,6 @@ def edit_lead(request, lead_id):
 
     context = {
         'lead': lead,
-        'status_choices': Lead.STATUS_CHOICES,
         'toast_message': toast_message,
         'toast_type': toast_type,
     }

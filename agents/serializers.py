@@ -19,7 +19,7 @@ class LeadSerializer(serializers.ModelSerializer):
             'preferred_location', 'budget', 'city',
             'status', 'notes', 'created_at'
         ]
-        read_only_fields = ['id', 'created_at', 'status']
+        read_only_fields = ['id', 'created_at', 'status', 'status']
 
     def create(self, validated_data):
         request = self.context.get('request')
