@@ -170,7 +170,7 @@
         </select>
       </div>
       <div class="col-md-2 mb-2">
-        <select name="phase_due[]" class="form-select">
+        <select name="phase_due[]" class="form-select phase-due-select" onchange="toggleCustomDays(this)">
           <option value="immediate">Immediate</option>
           <option value="30_days">Within 30 Days</option>
           <option value="60_days">Within 60 Days</option>
@@ -178,6 +178,9 @@
           <option value="120_days">Within 120 Days</option>
           <option value="custom">Custom Duration</option>
         </select>
+      </div>
+      <div class="col-md-2 mb-2 custom-days-container" style="display: none;">
+        <input type="number" name="phase_custom_days[]" class="form-control phase-custom-days" placeholder="Days">
       </div>
       <div class="col-md-1 mb-2 d-flex align-items-center">
         <button type="button" class="btn btn-outline-danger removePhaseBtn">Remove</button>
@@ -200,7 +203,7 @@
         </select>
       </div>
       <div class="col-md-2 mb-2">
-        <select name="phase_due[]" class="form-select">
+        <select name="phase_due[]" class="form-select phase-due-select" onchange="toggleCustomDays(this)">
           <option value="immediate" {% if phase.due == 'immediate' %}selected{% endif %}>Immediate</option>
           <option value="30_days" {% if phase.due == '30_days' %}selected{% endif %}>Within 30 Days</option>
           <option value="60_days" {% if phase.due == '60_days' %}selected{% endif %}>Within 60 Days</option>
@@ -208,6 +211,9 @@
           <option value="120_days" {% if phase.due == '120_days' %}selected{% endif %}>Within 120 Days</option>
           <option value="custom" {% if phase.due == 'custom' %}selected{% endif %}>Custom Duration</option>
         </select>
+      </div>
+      <div class="col-md-2 mb-2 custom-days-container" {% if phase.due == 'custom' %}style="display: block;"{% else %}style="display: none;"{% endif %}>
+        <input type="number" name="phase_custom_days[]" class="form-control phase-custom-days" placeholder="Days" value="{% if phase.custom_duration_days %}{{ phase.custom_duration_days }}{% endif %}">
       </div>
       <div class="col-md-1 mb-2 d-flex align-items-center">
         <button type="button" class="btn btn-outline-danger removePhaseBtn">Remove</button>
@@ -314,6 +320,20 @@ document.getElementById('plotsContainer').addEventListener('click', function(e) 
     }
 });
 
+// Toggle custom days input visibility
+function toggleCustomDays(selectElement) {
+    const container = selectElement.closest('.phase-row').querySelector('.custom-days-container');
+    const input = container.querySelector('input[name="phase_custom_days[]"]');
+    if (selectElement.value === 'custom') {
+        container.style.display = 'block';
+        input.setAttribute('required', 'required');
+    } else {
+        container.style.display = 'none';
+        input.removeAttribute('required');
+        input.value = '';
+    }
+}
+
 // Add/remove highlight rows
 document.getElementById('addHighlightBtn').addEventListener('click', function() {
     let container = document.getElementById('highlightsContainer');
@@ -340,6 +360,18 @@ document.getElementById('addPhaseBtn').addEventListener('click', function() {
     // Clear values
     row.querySelectorAll('input').forEach(input => input.value = '');
     row.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+    
+    // Hide custom days container and attach onChange handler
+    const customDaysContainer = row.querySelector('.custom-days-container');
+    if (customDaysContainer) {
+        customDaysContainer.style.display = 'none';
+    }
+    const dueSelect = row.querySelector('.phase-due-select');
+    if (dueSelect) {
+        dueSelect.addEventListener('change', function() {
+            toggleCustomDays(this);
+        });
+    }
 
     container.appendChild(row);
 });

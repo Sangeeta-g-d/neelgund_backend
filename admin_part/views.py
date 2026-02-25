@@ -201,16 +201,25 @@ def add_project(request):
                 phase_percentages = data.getlist("phase_percentage[]")
                 phase_payment_types = data.getlist("phase_payment_type[]")
                 phase_dues = data.getlist("phase_due[]")
+                phase_custom_days = data.getlist("phase_custom_days[]")
                 created_phases = []
 
-                for idx, (activity, percentage, payment_type, due) in enumerate(zip(phase_activities, phase_percentages, phase_payment_types, phase_dues), start=1):
+                for idx, (activity, percentage, payment_type, due, custom_days) in enumerate(zip(phase_activities, phase_percentages, phase_payment_types, phase_dues, phase_custom_days), start=1):
                     if activity.strip():
+                        custom_duration_days = None
+                        if due == 'custom' and custom_days:
+                            try:
+                                custom_duration_days = int(custom_days)
+                            except (ValueError, TypeError):
+                                custom_duration_days = None
+
                         phase = ProjectPaymentPhase.objects.create(
                             project=project,
                             activity=activity.strip(),
                             payment_percentage=percentage or 0,
                             payment_type=payment_type or 'phase_wise',
                             due=due or 'immediate',
+                            custom_duration_days=custom_duration_days,
                             order=idx,
                         )
                         created_phases.append(phase)
@@ -430,16 +439,25 @@ def edit_project(request, project_id):
                 phase_percentages = data.getlist("phase_percentage[]")
                 phase_payment_types = data.getlist("phase_payment_type[]")
                 phase_dues = data.getlist("phase_due[]")
+                phase_custom_days = data.getlist("phase_custom_days[]")
 
                 existing_phase_ids = []
-                for idx, (p_id, activity, percentage, payment_type, due) in enumerate(zip(phase_ids, phase_activities, phase_percentages, phase_payment_types, phase_dues), start=1):
+                for idx, (p_id, activity, percentage, payment_type, due, custom_days) in enumerate(zip(phase_ids, phase_activities, phase_percentages, phase_payment_types, phase_dues, phase_custom_days), start=1):
                     if activity.strip():
+                        custom_duration_days = None
+                        if due == 'custom' and custom_days:
+                            try:
+                                custom_duration_days = int(custom_days)
+                            except (ValueError, TypeError):
+                                custom_duration_days = None
+
                         if p_id:
                             phase = ProjectPaymentPhase.objects.get(id=p_id)
                             phase.activity = activity.strip()
                             phase.payment_percentage = percentage or 0
                             phase.payment_type = payment_type or 'phase_wise'
                             phase.due = due
+                            phase.custom_duration_days = custom_duration_days
                             phase.order = idx
                             phase.save()
                             existing_phase_ids.append(phase.id)
@@ -450,6 +468,7 @@ def edit_project(request, project_id):
                                 payment_percentage=percentage or 0,
                                 payment_type=payment_type or 'phase_wise',
                                 due=due,
+                                custom_duration_days=custom_duration_days,
                                 order=idx
                             )
                             existing_phase_ids.append(new_phase.id)

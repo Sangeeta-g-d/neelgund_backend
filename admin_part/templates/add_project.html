@@ -157,7 +157,7 @@
           </select>
         </div>
         <div class="col-md-2 mb-2">
-          <select name="phase_due[]" class="form-select">
+          <select name="phase_due[]" class="form-select phase-due-select" onchange="toggleCustomDays(this)">
             <option value="immediate">Immediate</option>
             <option value="30_days">Within 30 Days</option>
             <option value="60_days">Within 60 Days</option>
@@ -165,6 +165,9 @@
             <option value="120_days">Within 120 Days</option>
             <option value="custom">Custom Duration</option>
           </select>
+        </div>
+        <div class="col-md-2 mb-2 custom-days-container" style="display: none;">
+          <input type="number" name="phase_custom_days[]" class="form-control phase-custom-days" placeholder="Days">
         </div>
         <div class="col-md-1 mb-2 d-flex align-items-center">
           <button type="button" class="btn btn-outline-danger btn-sm removePhaseBtn">Remove</button>
@@ -284,10 +287,34 @@ document.getElementById('addPhaseBtn').addEventListener('click', function() {
     // Clear all input/select values
     newRow.querySelectorAll('input').forEach(input => input.value = '');
     newRow.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+    
+    // Hide custom days field by default
+    newRow.querySelector('.custom-days-container').style.display = 'none';
+    
+    // Re-attach the onchange handler
+    newRow.querySelector('.phase-due-select').addEventListener('change', function(e) {
+      toggleCustomDays(e.target);
+    });
 
     // Append the cloned row
     container.appendChild(newRow);
 });
+
+// Toggle custom days field visibility
+function toggleCustomDays(selectElement) {
+  const phaseRow = selectElement.closest('.phase-row');
+  const customDaysContainer = phaseRow.querySelector('.custom-days-container');
+  const customDaysInput = phaseRow.querySelector('.phase-custom-days');
+  
+  if (selectElement.value === 'custom') {
+    customDaysContainer.style.display = 'block';
+    customDaysInput.required = true;
+  } else {
+    customDaysContainer.style.display = 'none';
+    customDaysInput.required = false;
+    customDaysInput.value = '';
+  }
+}
 
 // Remove phase row (ensure at least one remains)
 document.addEventListener('click', function(e) {

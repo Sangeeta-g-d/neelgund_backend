@@ -119,6 +119,11 @@ class ProjectPaymentPhase(models.Model):
         validators=[MinValueValidator(0), MaxValueValidator(100)],
     )
     due = models.CharField(max_length=50, choices=DUE_CHOICES, default='immediate')
+    custom_duration_days = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Custom duration in days (only used when due='custom')"
+    )
     order = models.PositiveIntegerField(default=0)
 
     created_at = models.DateTimeField(default=timezone.now)
