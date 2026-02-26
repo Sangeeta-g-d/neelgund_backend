@@ -498,37 +498,61 @@ def edit_project(request, project_id):
                 project.save()
 
                 # 6️⃣ Update plots
-                plot_ids = data.getlist("plot_id[]")
-                plot_nos = data.getlist("plot_no[]")
-                sizes = data.getlist("size[]")
-                areas = data.getlist("area_sq[]")
-                prices = data.getlist("price[]")
-                plot_types = data.getlist("plot_type[]")
-
-                existing_plot_ids = []
-                for p_id, p_no, size, area, price, plot_type in zip(plot_ids, plot_nos, sizes, areas, prices, plot_types):
-                    if p_no.strip():
-                        if p_id:
-                            plot = PlotInventory.objects.get(id=p_id)
-                            plot.plot_no = p_no
-                            plot.size = size
-                            plot.area_sq = area or 0
-                            plot.price = price
-                            plot.type = plot_type or 'residential'
-                            plot.save()
-                            existing_plot_ids.append(plot.id)
-                        else:
-                            new_plot = PlotInventory.objects.create(
+                is_excel_import = data.get("is_excel_import") == "true"
+                
+                if is_excel_import:
+                    # Delete all existing plots and import from Excel data
+                    project.plots.all().delete()
+                    
+                    excel_plot_data = data.getlist("excel_plot_data[]")
+                    for plot_json in excel_plot_data:
+                        try:
+                            import json
+                            plot_data = json.loads(plot_json)
+                            PlotInventory.objects.create(
                                 project=project,
-                                plot_no=p_no,
-                                size=size,
-                                area_sq=area or 0,
-                                price=price,
-                                type=plot_type or 'residential',
+                                plot_no=plot_data.get('plot_no', ''),
+                                size=plot_data.get('size', ''),
+                                area_sq=plot_data.get('area_sq', 0),
+                                price=plot_data.get('price', ''),
+                                type=plot_data.get('type', 'residential'),
                                 is_available=True
                             )
-                            existing_plot_ids.append(new_plot.id)
-                project.plots.exclude(id__in=existing_plot_ids).delete()
+                        except Exception as e:
+                            print(f"Error importing plot from Excel: {e}")
+                else:
+                    # Manual plot update (existing logic)
+                    plot_ids = data.getlist("plot_id[]")
+                    plot_nos = data.getlist("plot_no[]")
+                    sizes = data.getlist("size[]")
+                    areas = data.getlist("area_sq[]")
+                    prices = data.getlist("price[]")
+                    plot_types = data.getlist("plot_type[]")
+
+                    existing_plot_ids = []
+                    for p_id, p_no, size, area, price, plot_type in zip(plot_ids, plot_nos, sizes, areas, prices, plot_types):
+                        if p_no.strip():
+                            if p_id:
+                                plot = PlotInventory.objects.get(id=p_id)
+                                plot.plot_no = p_no
+                                plot.size = size
+                                plot.area_sq = area or 0
+                                plot.price = price
+                                plot.type = plot_type or 'residential'
+                                plot.save()
+                                existing_plot_ids.append(plot.id)
+                            else:
+                                new_plot = PlotInventory.objects.create(
+                                    project=project,
+                                    plot_no=p_no,
+                                    size=size,
+                                    area_sq=area or 0,
+                                    price=price,
+                                    type=plot_type or 'residential',
+                                    is_available=True
+                                )
+                                existing_plot_ids.append(new_plot.id)
+                    project.plots.exclude(id__in=existing_plot_ids).delete()
 
                 toast_message = "✅ Project updated successfully!"
 

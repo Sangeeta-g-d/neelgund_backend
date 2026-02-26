@@ -243,7 +243,55 @@
 
         <!-- 5️⃣ Plots -->
         <div class="card mb-4">
-            <div class="card-header bg-light">Plots</div>
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <span>Plots</span>
+                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="collapse" data-bs-target="#excelImportSection">
+                    📤 Import Excel
+                </button>
+            </div>
+            
+            <!-- Excel Import Section -->
+            <div class="collapse" id="excelImportSection">
+                <div class="card card-body bg-light mb-3">
+                    <h6 class="mb-3">📊 Import Plots from Excel</h6>
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label">Excel File (.xlsx, .xls, .csv)</label>
+                            <input type="file" id="plotExcelFile" name="plot_excel_file" class="form-control" accept=".xlsx,.xls,.csv">
+                            <small class="text-muted d-block mt-2">
+                                Excel should have columns: plot_no, size, area_sq, price, type (optional)
+                            </small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="button" id="previewExcelBtn" class="btn btn-outline-primary w-100">Preview & Replace</button>
+                        </div>
+                    </div>
+                    <div id="excelPreviewTable" style="display: none;">
+                        <h6 class="mt-3 mb-2">Preview (will replace all existing plots):</h6>
+                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-sm table-bordered" id="plotPreviewTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Plot No</th>
+                                        <th>Size</th>
+                                        <th>Area (sq ft)</th>
+                                        <th>Price</th>
+                                        <th>Type</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <div class="alert alert-warning mt-2 mb-2">
+                            <small>⚠️ Clicking "Update Project" will replace ALL existing plots with this data.</small>
+                        </div>
+                        <button type="button" id="confirmExcelImportBtn" class="btn btn-sm btn-danger">Confirm & Replace All Plots</button>
+                        <button type="button" id="cancelExcelImportBtn" class="btn btn-sm btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="card-body" id="plotsContainer">
                 <!-- Plot template (hidden) -->
                 <div class="row mb-2 plot-row d-none" id="plotRowTemplate">
@@ -402,7 +450,138 @@ document.getElementById('phasesContainer').addEventListener('click', function(e)
         }
     }
 });
+
+// ==================== Excel Import for Plots ====================
+let excelPlotsData = [];
+let isExcelImport = false;
+
+document.getElementById('previewExcelBtn').addEventListener('click', function() {
+    const fileInput = document.getElementById('plotExcelFile');
+    if (!fileInput.files || !fileInput.files[0]) {
+        alert('Please select an Excel file first');
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        try {
+            // Parse Excel file
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(worksheet);
+
+            if (rows.length === 0) {
+                alert('Excel file is empty');
+                return;
+            }
+
+            // Validate and display data
+            excelPlotsData = [];
+            const previewBody = document.querySelector('#plotPreviewTable tbody');
+            previewBody.innerHTML = '';
+
+            rows.forEach((row, idx) => {
+                const plotNo = String(row.plot_no || '').trim();
+                if (plotNo) {
+                    const plotData = {
+                        plot_no: plotNo,
+                        size: String(row.size || '').trim(),
+                        area_sq: parseFloat(row.area_sq) || 0,
+                        price: String(row.price || '').trim(),
+                        type: String(row.type || 'residential').toLowerCase()
+                    };
+                    excelPlotsData.push(plotData);
+
+                    // Add row to preview table
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${plotData.plot_no}</td>
+                        <td>${plotData.size}</td>
+                        <td>${plotData.area_sq}</td>
+                        <td>${plotData.price}</td>
+                        <td><span class="badge bg-info">${plotData.type}</span></td>
+                    `;
+                    previewBody.appendChild(tr);
+                }
+            });
+
+            if (excelPlotsData.length === 0) {
+                alert('No valid plots found in Excel');
+                return;
+            }
+
+            // Show preview
+            document.getElementById('excelPreviewTable').style.display = 'block';
+            window.scrollTo(0, document.getElementById('excelImportSection').offsetTop - 100);
+        } catch (error) {
+            alert('Error reading Excel: ' + error.message);
+            console.error(error);
+        }
+    };
+
+    reader.readAsArrayBuffer(file);
+});
+
+document.getElementById('confirmExcelImportBtn').addEventListener('click', function() {
+    if (confirm('This will replace ALL existing plots with the Excel data. Continue?')) {
+        isExcelImport = true;
+        
+        // Clear existing plot rows
+        const container = document.getElementById('plotsContainer');
+        const plotRows = container.querySelectorAll('.plot-row:not(.d-none)');
+        plotRows.forEach(row => row.remove());
+
+        // Add Excel data as hidden form fields
+        const form = document.querySelector('form');
+        
+        // Clear any existing hidden plot inputs
+        const existingHiddenInputs = form.querySelectorAll('input[name="excel_plot_data[]"]');
+        existingHiddenInputs.forEach(input => input.remove());
+
+        // Add hidden inputs for Excel data
+        excelPlotsData.forEach((plot, idx) => {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'excel_plot_data[]';
+            hiddenInput.value = JSON.stringify(plot);
+            form.appendChild(hiddenInput);
+        });
+
+        // Add flag to indicate Excel import
+        const excelImportFlag = document.createElement('input');
+        excelImportFlag.type = 'hidden';
+        excelImportFlag.name = 'is_excel_import';
+        excelImportFlag.value = 'true';
+        form.appendChild(excelImportFlag);
+
+        // Hide preview and show success message
+        document.getElementById('excelPreviewTable').style.display = 'none';
+        document.getElementById('excelImportSection').classList.remove('show');
+        
+        // Show toast
+        Toastify({
+            text: `✅ ${excelPlotsData.length} plots ready to import. Click 'Update Project' to confirm.`,
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+        }).showToast();
+    }
+});
+
+document.getElementById('cancelExcelImportBtn').addEventListener('click', function() {
+    document.getElementById('excelPreviewTable').style.display = 'none';
+    document.getElementById('plotExcelFile').value = '';
+    excelPlotsData = [];
+    isExcelImport = false;
+});
 </script>
+
+<!-- ✅ Include XLSX library for Excel parsing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
 
 {% if toast_message %}
 <script>
