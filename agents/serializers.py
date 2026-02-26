@@ -343,7 +343,7 @@ class ProjectWithPriceSerializer(serializers.ModelSerializer):
 class PlotInventorySerializer(serializers.ModelSerializer):
     class Meta:
         model = PlotInventory
-        fields = ['id', 'plot_no', 'size', 'area_sq', 'price', 'is_available']
+        fields = ['id', 'plot_no', 'size', 'area_sq', 'price', 'is_available','type']
 
 
 class CustomerListSerializer(serializers.ModelSerializer):

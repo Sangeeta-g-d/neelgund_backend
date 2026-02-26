@@ -248,14 +248,16 @@ def add_project(request):
                                 size=str(row.get("size") or "").strip(),
                                 area_sq=row.get("area_sq") or 0,
                                 price=str(row.get("price") or "").strip(),
+                                type=str(row.get("type") or "residential").lower(),
                                 is_available=True,
                             )
 
-                for plot_no, size, area, price in zip(
+                for plot_no, size, area, price, plot_type in zip(
                     data.getlist("plot_no[]"),
                     data.getlist("size[]"),
                     data.getlist("area_sq[]"),
-                    data.getlist("price[]")
+                    data.getlist("price[]"),
+                    data.getlist("plot_type[]")
                 ):
                     if plot_no:
                         PlotInventory.objects.create(
@@ -264,6 +266,7 @@ def add_project(request):
                             size=size,
                             area_sq=area or 0,
                             price=price or "",
+                            type=plot_type or "residential",
                             is_available=True,
                         )
 
@@ -500,9 +503,10 @@ def edit_project(request, project_id):
                 sizes = data.getlist("size[]")
                 areas = data.getlist("area_sq[]")
                 prices = data.getlist("price[]")
+                plot_types = data.getlist("plot_type[]")
 
                 existing_plot_ids = []
-                for p_id, p_no, size, area, price in zip(plot_ids, plot_nos, sizes, areas, prices):
+                for p_id, p_no, size, area, price, plot_type in zip(plot_ids, plot_nos, sizes, areas, prices, plot_types):
                     if p_no.strip():
                         if p_id:
                             plot = PlotInventory.objects.get(id=p_id)
@@ -510,6 +514,7 @@ def edit_project(request, project_id):
                             plot.size = size
                             plot.area_sq = area or 0
                             plot.price = price
+                            plot.type = plot_type or 'residential'
                             plot.save()
                             existing_plot_ids.append(plot.id)
                         else:
@@ -519,6 +524,7 @@ def edit_project(request, project_id):
                                 size=size,
                                 area_sq=area or 0,
                                 price=price,
+                                type=plot_type or 'residential',
                                 is_available=True
                             )
                             existing_plot_ids.append(new_plot.id)

@@ -72,11 +72,22 @@ class RealEstateProject(models.Model):
 
 class PlotInventory(models.Model):
     """Individual plot details (can be auto-imported from Excel or added manually)"""
+    PLOT_TYPE_CHOICES = [
+        ('residential', 'Residential'),
+        ('commercial', 'Commercial'),
+    ]
+
     project = models.ForeignKey(RealEstateProject, on_delete=models.CASCADE, related_name='plots')
     plot_no = models.CharField(max_length=50)
     size = models.CharField(max_length=100, help_text="Example: 30x40 ft")
     area_sq = models.DecimalField(max_digits=10, decimal_places=2, help_text="Total area in sq. ft")
     price = models.CharField(max_length=20, help_text="Example: 80L, 30L")
+    type = models.CharField(
+        max_length=50,
+        choices=PLOT_TYPE_CHOICES,
+        default='residential',
+        help_text="Plot type: Residential or Commercial"
+    )
 
     is_available = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now)

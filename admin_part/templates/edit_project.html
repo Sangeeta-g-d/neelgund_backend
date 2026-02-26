@@ -248,40 +248,56 @@
                 <!-- Plot template (hidden) -->
                 <div class="row mb-2 plot-row d-none" id="plotRowTemplate">
                     <input type="hidden" name="plot_id[]" value="">
-                    <div class="col-md-3 mb-2">
+                    <div class="col-md-2 mb-2">
                         <input type="text" name="plot_no[]" class="form-control" placeholder="Plot No">
                     </div>
-                    <div class="col-md-3 mb-2">
+                    <div class="col-md-2 mb-2">
                         <input type="text" name="size[]" class="form-control" placeholder="Size">
                     </div>
-                    <div class="col-md-3 mb-2">
+                    <div class="col-md-2 mb-2">
                         <input type="number" step="0.01" name="area_sq[]" class="form-control" placeholder="Area">
                     </div>
-                    <div class="col-md-3 mb-2">
+                    <div class="col-md-2 mb-2">
                         <input type="text" name="price[]" class="form-control" placeholder="Price">
-                        <button type="button" class="btn btn-outline-danger removePlotBtn mt-1">Remove</button>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <select name="plot_type[]" class="form-select">
+                            <option value="residential">Residential</option>
+                            <option value="commercial">Commercial</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <button type="button" class="btn btn-outline-danger removePlotBtn">Remove</button>
                     </div>
                 </div>
 
                 {% for plot in project.plots.all %}
                 <div class="row mb-2 plot-row">
                     <input type="hidden" name="plot_id[]" value="{{ plot.id }}">
-                    <div class="col-md-3 mb-2">
+                    <div class="col-md-2 mb-2">
                         <input type="text" name="plot_no[]" class="form-control" placeholder="Plot No"
                                value="{{ plot.plot_no }}">
                     </div>
-                    <div class="col-md-3 mb-2">
+                    <div class="col-md-2 mb-2">
                         <input type="text" name="size[]" class="form-control" placeholder="Size"
                                value="{{ plot.size }}">
                     </div>
-                    <div class="col-md-3 mb-2">
+                    <div class="col-md-2 mb-2">
                         <input type="number" step="0.01" name="area_sq[]" class="form-control" placeholder="Area"
                                value="{{ plot.area_sq }}">
                     </div>
-                    <div class="col-md-3 mb-2">
+                    <div class="col-md-2 mb-2">
                         <input type="text" name="price[]" class="form-control" placeholder="Price"
                                value="{{ plot.price }}">
-                        <button type="button" class="btn btn-outline-danger removePlotBtn mt-1">Remove</button>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <select name="plot_type[]" class="form-select">
+                            <option value="residential" {% if plot.type == 'residential' %}selected{% endif %}>Residential</option>
+                            <option value="commercial" {% if plot.type == 'commercial' %}selected{% endif %}>Commercial</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <button type="button" class="btn btn-outline-danger removePlotBtn">Remove</button>
                     </div>
                 </div>
                 {% endfor %}
