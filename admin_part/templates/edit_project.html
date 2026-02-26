@@ -367,6 +367,9 @@
     </form>
 </div>
 
+<!-- ✅ Include XLSX library for Excel parsing (MUST BE BEFORE OTHER SCRIPTS) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+
 <script>
 // Add/remove plot rows
 document.getElementById('addPlotBtn').addEventListener('click', function() {
@@ -579,9 +582,6 @@ document.getElementById('cancelExcelImportBtn').addEventListener('click', functi
     isExcelImport = false;
 });
 </script>
-
-<!-- ✅ Include XLSX library for Excel parsing -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
 
 {% if toast_message %}
 <script>
