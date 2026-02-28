@@ -142,6 +142,9 @@
                   <td class="text-muted">
                     <i class="bi bi-telephone me-1 text-primary"></i>
                     {{ lead.contact_number }}
+                    {% if lead.alternative_contact_number %}
+                      <br><small>Alt: {{ lead.alternative_contact_number }}</small>
+                    {% endif %}
                   </td>
                   <td>
                     <span class="text-muted small">{{ lead.agent.full_name }}</span>

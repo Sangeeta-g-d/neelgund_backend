@@ -40,6 +40,9 @@
             <label class="text-muted small">Lead</label>
             <p class="mb-0 fw-semibold text-dark">{{ lead.full_name }}</p>
             <small class="text-muted">{{ lead.contact_number }}</small>
+            {% if lead.alternative_contact_number %}
+              <br><small class="text-muted">Alt: {{ lead.alternative_contact_number }}</small>
+            {% endif %}
           </div>
 
           <!-- Project Info -->

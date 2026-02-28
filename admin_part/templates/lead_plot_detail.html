@@ -17,7 +17,7 @@
       </div>
     </div>
     <div class="card-body">
-      <p><strong>Lead:</strong> {{ lead.full_name }} ({{ lead.contact_number }})</p>
+      <p><strong>Lead:</strong> {{ lead.full_name }} ({{ lead.contact_number }}{% if lead.alternative_contact_number %}, Alt: {{ lead.alternative_contact_number }}{% endif %})</p>
       <p><strong>Plot Price:</strong> 
         {% if assignment.is_negotiated and assignment.negotiated_price %}
           <span class="badge bg-success me-2">Negotiated</span>

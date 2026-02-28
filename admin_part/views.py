@@ -711,6 +711,7 @@ def edit_lead(request, lead_id):
         # Update lead details (excluding status and agent)
         lead.full_name = request.POST.get('full_name', lead.full_name)
         lead.contact_number = request.POST.get('contact_number', lead.contact_number)
+        lead.alternative_contact_number = request.POST.get('alternative_contact_number', lead.alternative_contact_number)
         lead.email = request.POST.get('email', lead.email)
         lead.dob = request.POST.get('dob') or lead.dob
         lead.preferred_location = request.POST.get('preferred_location', lead.preferred_location)

@@ -21,6 +21,7 @@ STATUS_CHOICES = [
 class PersonBase(models.Model):
     full_name = models.CharField(max_length=150)
     contact_number = models.CharField(max_length=15)
+    alternative_contact_number = models.CharField(max_length=15, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     dob = models.DateField(blank=True, null=True)
     preferred_location = models.CharField(max_length=255, blank=True, null=True)

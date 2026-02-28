@@ -15,7 +15,7 @@ class LeadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lead
         fields = [
-            'id', 'full_name', 'contact_number', 'email', 'dob',
+            'id', 'full_name', 'contact_number', 'alternative_contact_number', 'email', 'dob',
             'preferred_location', 'budget', 'city',
             'status', 'notes', 'created_at'
         ]
@@ -38,6 +38,7 @@ class LeadListSerializer(serializers.ModelSerializer):
             'id',
             'full_name',
             'contact_number',
+            'alternative_contact_number',
             'email',
             'dob',
             'preferred_location',
@@ -83,6 +84,7 @@ class LeadDetailSerializer(serializers.ModelSerializer):
             'id',
             'full_name',
             'contact_number',
+            'alternative_contact_number',
             'email',
             'dob',
             'preferred_location',
@@ -156,6 +158,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             'id',
             'full_name',
             'contact_number',
+            'alternative_contact_number',
             'email',
             'dob',
             'preferred_location',
@@ -357,6 +360,7 @@ class CustomerListSerializer(serializers.ModelSerializer):
             'id',
             'full_name',
             'contact_number',
+            'alternative_contact_number',
             'email',
             'dob',
             'preferred_location',

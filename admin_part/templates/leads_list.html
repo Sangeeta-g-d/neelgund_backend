@@ -162,7 +162,10 @@
                         <h6 class="mb-1 fw-semibold text-dark">{{ lead.full_name }}</h6>
                         <div class="text-muted small">
                           <span>{{ lead.email|default:"—" }}</span><br>
-                          <span>{{ lead.contact_number|default:"—" }}</span>
+                          <span>{{ lead.contact_number|default:"—" }}</span><br>
+                          {% if lead.alternative_contact_number %}
+                            <span>Alt: {{ lead.alternative_contact_number }}</span>
+                          {% endif %}
                         </div>
                       </div>
                     </div>

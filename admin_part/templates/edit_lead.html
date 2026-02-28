@@ -59,6 +59,19 @@
               placeholder="Enter contact number">
             <small class="text-muted d-block mt-1">Phone number for contact</small>
           </div>
+
+          <!-- Alternative Contact Number -->
+          <div class="col-md-6">
+            <label for="alternative_contact_number" class="form-label fw-semibold text-dark">Alternative Contact Number</label>
+            <input 
+              type="tel" 
+              class="form-control form-control-lg rounded-3" 
+              id="alternative_contact_number" 
+              name="alternative_contact_number" 
+              value="{{ lead.alternative_contact_number|default:'' }}"
+              placeholder="Enter alternative contact number">
+            <small class="text-muted d-block mt-1">Alternative phone number (optional)</small>
+          </div>
         </div>
 
         <div class="row g-3 mb-4">
