@@ -48,14 +48,13 @@
                         <input type="number" name="total_plots" class="form-control" value="{{ project.total_plots }}">
                     </div>
                    <div class="col-md-6 mb-3">
-    <label class="form-label">Status</label>
-    <select name="status" class="form-control" required>
-        {% for key, val in project.STATUS_CHOICES %}
-        <option value="{{ key }}" {% if project.status == key %}selected{% endif %}>{{ val }}</option>
-        {% endfor %}
-    </select>
-</div>
-
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-control" required>
+                            {% for key, val in project.STATUS_CHOICES %}
+                            <option value="{{ key }}" {% if project.status == key %}selected{% endif %}>{{ val }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>
@@ -149,150 +148,119 @@
                 <button type="button" id="addHighlightBtn" class="btn btn-sm btn-outline-primary mt-2">+ Add Highlight</button>
             </div>
         </div>
+        
         <!-- 6️⃣ Payment Phases -->
-<div class="card mb-4">
-  <div class="card-header bg-light">Payment Phases</div>
-  <div class="card-body" id="phasesContainer">
-
-    <!-- Hidden Template -->
-    <div class="row mb-2 phase-row d-none" id="phaseRowTemplate">
-      <input type="hidden" name="phase_id[]" value="">
-      <div class="col-md-3 mb-2">
-        <input type="text" name="phase_activity[]" class="form-control" placeholder="Activity (e.g. Booking)">
-      </div>
-      <div class="col-md-2 mb-2">
-        <input type="number" step="0.01" name="phase_percentage[]" class="form-control" placeholder="Payment %">
-      </div>
-      <div class="col-md-2 mb-2">
-        <select name="phase_payment_type[]" class="form-select">
-          <option value="phase_wise">Phase Wise</option>
-          <option value="full_payment">Full Payment</option>
-        </select>
-      </div>
-      <div class="col-md-2 mb-2">
-        <select name="phase_due[]" class="form-select phase-due-select" onchange="toggleCustomDays(this)">
-          <option value="immediate">Immediate</option>
-          <option value="30_days">Within 30 Days</option>
-          <option value="60_days">Within 60 Days</option>
-          <option value="90_days">Within 90 Days</option>
-          <option value="120_days">Within 120 Days</option>
-          <option value="custom">Custom Duration</option>
-        </select>
-      </div>
-      <div class="col-md-2 mb-2 custom-days-container" style="display: none;">
-        <input type="number" name="phase_custom_days[]" class="form-control phase-custom-days" placeholder="Days">
-      </div>
-      <div class="col-md-1 mb-2 d-flex align-items-center">
-        <button type="button" class="btn btn-outline-danger removePhaseBtn">Remove</button>
-      </div>
-    </div>
-
-    {% for phase in project.payment_phases.all %}
-    <div class="row mb-2 phase-row">
-      <input type="hidden" name="phase_id[]" value="{{ phase.id }}">
-      <div class="col-md-3 mb-2">
-        <input type="text" name="phase_activity[]" class="form-control" placeholder="Activity" value="{{ phase.activity }}">
-      </div>
-      <div class="col-md-2 mb-2">
-        <input type="number" step="0.01" name="phase_percentage[]" class="form-control" placeholder="Payment %" value="{{ phase.payment_percentage }}">
-      </div>
-      <div class="col-md-2 mb-2">
-        <select name="phase_payment_type[]" class="form-select">
-          <option value="phase_wise" {% if phase.payment_type == 'phase_wise' %}selected{% endif %}>Phase Wise</option>
-          <option value="full_payment" {% if phase.payment_type == 'full_payment' %}selected{% endif %}>Full Payment</option>
-        </select>
-      </div>
-      <div class="col-md-2 mb-2">
-        <select name="phase_due[]" class="form-select phase-due-select" onchange="toggleCustomDays(this)">
-          <option value="immediate" {% if phase.due == 'immediate' %}selected{% endif %}>Immediate</option>
-          <option value="30_days" {% if phase.due == '30_days' %}selected{% endif %}>Within 30 Days</option>
-          <option value="60_days" {% if phase.due == '60_days' %}selected{% endif %}>Within 60 Days</option>
-          <option value="90_days" {% if phase.due == '90_days' %}selected{% endif %}>Within 90 Days</option>
-          <option value="120_days" {% if phase.due == '120_days' %}selected{% endif %}>Within 120 Days</option>
-          <option value="custom" {% if phase.due == 'custom' %}selected{% endif %}>Custom Duration</option>
-        </select>
-      </div>
-      <div class="col-md-2 mb-2 custom-days-container" {% if phase.due == 'custom' %}style="display: block;"{% else %}style="display: none;"{% endif %}>
-        <input type="number" name="phase_custom_days[]" class="form-control phase-custom-days" placeholder="Days" value="{% if phase.custom_duration_days %}{{ phase.custom_duration_days }}{% endif %}">
-      </div>
-      <div class="col-md-1 mb-2 d-flex align-items-center">
-        <button type="button" class="btn btn-outline-danger removePhaseBtn">Remove</button>
-      </div>
-    </div>
-    {% endfor %}
-
-    <button type="button" id="addPhaseBtn" class="btn btn-sm btn-outline-primary mt-2">+ Add Another Phase</button>
-  </div>
-</div>
-
-<!-- 7️⃣ Current Project Phase -->
-<div class="card mb-4">
-  <div class="card-header bg-light">Current Project Phase</div>
-  <div class="card-body">
-    <select name="current_phase" class="form-select">
-      <option value="">-- Select Current Phase --</option>
-      {% for phase in project.payment_phases.all %}
-      <option value="{{ phase.id }}" {% if project.current_phase and project.current_phase.id == phase.id %}selected{% endif %}>
-        {{ phase.activity }} ({{ phase.payment_percentage }}%)
-      </option>
-      {% endfor %}
-    </select>
-    <small class="text-muted">Select the current ongoing payment phase for this project.</small>
-  </div>
-</div>
-
-        <!-- 5️⃣ Plots -->
         <div class="card mb-4">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                <span>Plots</span>
-                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="collapse" data-bs-target="#excelImportSection">
-                    📤 Import Excel
-                </button>
-            </div>
-            
-            <!-- Excel Import Section -->
-            <div class="collapse" id="excelImportSection">
-                <div class="card card-body bg-light mb-3">
-                    <h6 class="mb-3">📊 Import Plots from Excel</h6>
-                    <div class="row">
-                        <div class="col-md-8 mb-3">
-                            <label class="form-label">Excel File (.xlsx, .xls, .csv)</label>
-                            <input type="file" id="plotExcelFile" name="plot_excel_file" class="form-control" accept=".xlsx,.xls,.csv">
-                            <small class="text-muted d-block mt-2">
-                                Excel should have columns: plot_no, size, area_sq, price, type (optional)
-                            </small>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">&nbsp;</label>
-                            <button type="button" id="previewExcelBtn" class="btn btn-outline-primary w-100">Preview & Replace</button>
-                        </div>
+            <div class="card-header bg-light">Payment Phases</div>
+            <div class="card-body" id="phasesContainer">
+                <!-- Hidden Template -->
+                <div class="row mb-2 phase-row d-none" id="phaseRowTemplate">
+                    <input type="hidden" name="phase_id[]" value="">
+                    <div class="col-md-3 mb-2">
+                        <input type="text" name="phase_activity[]" class="form-control" placeholder="Activity (e.g. Booking)">
                     </div>
-                    <div id="excelPreviewTable" style="display: none;">
-                        <h6 class="mt-3 mb-2">Preview (will replace all existing plots):</h6>
-                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-                            <table class="table table-sm table-bordered" id="plotPreviewTable">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Plot No</th>
-                                        <th>Size</th>
-                                        <th>Area (sq ft)</th>
-                                        <th>Price</th>
-                                        <th>Type</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                        <div class="alert alert-warning mt-2 mb-2">
-                            <small>⚠️ Clicking "Update Project" will replace ALL existing plots with this data.</small>
-                        </div>
-                        <button type="button" id="confirmExcelImportBtn" class="btn btn-sm btn-danger">Confirm & Replace All Plots</button>
-                        <button type="button" id="cancelExcelImportBtn" class="btn btn-sm btn-secondary">Cancel</button>
+                    <div class="col-md-2 mb-2">
+                        <input type="number" step="0.01" name="phase_percentage[]" class="form-control" placeholder="Payment %">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <select name="phase_payment_type[]" class="form-select">
+                            <option value="phase_wise">Phase Wise</option>
+                            <option value="full_payment">Full Payment</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <select name="phase_due[]" class="form-select phase-due-select">
+                            <option value="immediate">Immediate</option>
+                            <option value="30_days">Within 30 Days</option>
+                            <option value="60_days">Within 60 Days</option>
+                            <option value="90_days">Within 90 Days</option>
+                            <option value="120_days">Within 120 Days</option>
+                            <option value="custom">Custom Duration</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-2 custom-days-container" style="display: none;">
+                        <input type="number" name="phase_custom_days[]" class="form-control phase-custom-days" placeholder="Days">
+                    </div>
+                    <div class="col-md-1 mb-2 d-flex align-items-center">
+                        <button type="button" class="btn btn-outline-danger removePhaseBtn">Remove</button>
                     </div>
                 </div>
-            </div>
 
-            <div class="card-body" id="plotsContainer">
+                {% for phase in project.payment_phases.all %}
+                <div class="row mb-2 phase-row">
+                    <input type="hidden" name="phase_id[]" value="{{ phase.id }}">
+                    <div class="col-md-3 mb-2">
+                        <input type="text" name="phase_activity[]" class="form-control" placeholder="Activity" value="{{ phase.activity }}">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <input type="number" step="0.01" name="phase_percentage[]" class="form-control" placeholder="Payment %" value="{{ phase.payment_percentage }}">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <select name="phase_payment_type[]" class="form-select">
+                            <option value="phase_wise" {% if phase.payment_type == 'phase_wise' %}selected{% endif %}>Phase Wise</option>
+                            <option value="full_payment" {% if phase.payment_type == 'full_payment' %}selected{% endif %}>Full Payment</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <select name="phase_due[]" class="form-select phase-due-select">
+                            <option value="immediate" {% if phase.due == 'immediate' %}selected{% endif %}>Immediate</option>
+                            <option value="30_days" {% if phase.due == '30_days' %}selected{% endif %}>Within 30 Days</option>
+                            <option value="60_days" {% if phase.due == '60_days' %}selected{% endif %}>Within 60 Days</option>
+                            <option value="90_days" {% if phase.due == '90_days' %}selected{% endif %}>Within 90 Days</option>
+                            <option value="120_days" {% if phase.due == '120_days' %}selected{% endif %}>Within 120 Days</option>
+                            <option value="custom" {% if phase.due == 'custom' %}selected{% endif %}>Custom Duration</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-2 custom-days-container" {% if phase.due == 'custom' %}style="display: block;"{% else %}style="display: none;"{% endif %}>
+                        <input type="number" name="phase_custom_days[]" class="form-control phase-custom-days" placeholder="Days" value="{% if phase.custom_duration_days %}{{ phase.custom_duration_days }}{% endif %}">
+                    </div>
+                    <div class="col-md-1 mb-2 d-flex align-items-center">
+                        <button type="button" class="btn btn-outline-danger removePhaseBtn">Remove</button>
+                    </div>
+                </div>
+                {% endfor %}
+
+                <button type="button" id="addPhaseBtn" class="btn btn-sm btn-outline-primary mt-2">+ Add Another Phase</button>
+            </div>
+        </div>
+
+        <!-- 7️⃣ Current Project Phase -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">Current Project Phase</div>
+            <div class="card-body">
+                <select name="current_phase" class="form-select">
+                    <option value="">-- Select Current Phase --</option>
+                    {% for phase in project.payment_phases.all %}
+                    <option value="{{ phase.id }}" {% if project.current_phase and project.current_phase.id == phase.id %}selected{% endif %}>
+                        {{ phase.activity }} ({{ phase.payment_percentage }}%)
+                    </option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted">Select the current ongoing payment phase for this project.</small>
+            </div>
+        </div>
+
+        <!-- 5️⃣ Plots & Inventory Excel -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">Plots Management & Inventory Excel</div>
+            <div class="card-body">
+                <!-- 🔄 Excel Upload Section -->
+                <div class="alert alert-info mb-3">
+                    <strong>📊 Upload New Excel to Replace All Plots:</strong>
+                    <p class="mb-0">Select an Excel file (.xlsx, .xls, .csv) with columns: plot_no, size, area_sq, price, type (optional). This will replace ALL existing plots.</p>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-8 mb-3">
+                        <label class="form-label">Inventory Excel File</label>
+                        <input type="file" name="inventory_excel" class="form-control" accept=".xlsx,.xls,.csv">
+                        <small class="text-muted d-block mt-2">Optional: Upload to replace all plots. Leave empty to manually edit plots below.</small>
+                    </div>
+                </div>
+
+                <hr>
+                <h6 class="mb-3">✏️ Manual Plots Edit (or leave empty if uploading Excel above)</h6>
+                
+                <div id="plotsContainer">
                 <!-- Plot template (hidden) -->
                 <div class="row mb-2 plot-row d-none" id="plotRowTemplate">
                     <input type="hidden" name="plot_id[]" value="">
@@ -353,7 +321,6 @@
             </div>
         </div>
 
-
         <!-- 6️⃣ Commission -->
         <div class="card mb-4">
             <div class="card-header bg-light">Commission</div>
@@ -367,232 +334,122 @@
     </form>
 </div>
 
-<!-- ✅ Include XLSX library for Excel parsing (MUST BE BEFORE OTHER SCRIPTS) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
-
+<!-- ✅ Simple scripts for manual plot management -->
 <script>
-// Add/remove plot rows
-document.getElementById('addPlotBtn').addEventListener('click', function() {
-    let container = document.getElementById('plotsContainer');
-    let template = document.getElementById('plotRowTemplate');
-    let row = template.cloneNode(true);
-    row.id = "";
-    row.classList.remove('d-none');
-    row.querySelectorAll('input').forEach(input => input.value = '');
-    container.appendChild(row);
-});
-document.getElementById('plotsContainer').addEventListener('click', function(e) {
-    if (e.target.classList.contains('removePlotBtn')) {
-        e.target.closest('.plot-row').remove();
-    }
-});
-
-// Toggle custom days input visibility
-function toggleCustomDays(selectElement) {
-    const container = selectElement.closest('.phase-row').querySelector('.custom-days-container');
-    const input = container.querySelector('input[name="phase_custom_days[]"]');
-    if (selectElement.value === 'custom') {
-        container.style.display = 'block';
-        input.setAttribute('required', 'required');
-    } else {
-        container.style.display = 'none';
-        input.removeAttribute('required');
-        input.value = '';
-    }
-}
-
-// Add/remove highlight rows
-document.getElementById('addHighlightBtn').addEventListener('click', function() {
-    let container = document.getElementById('highlightsContainer');
-    let template = document.getElementById('highlightRowTemplate');
-    let row = template.cloneNode(true);
-    row.id = "";
-    row.classList.remove('d-none');
-    row.querySelectorAll('input').forEach(input => input.value = '');
-    container.appendChild(row);
-});
-document.getElementById('highlightsContainer').addEventListener('click', function(e) {
-    if (e.target.classList.contains('removeHighlightBtn')) {
-        e.target.closest('.highlight-row').remove();
-    }
-});
-
-document.getElementById('addPhaseBtn').addEventListener('click', function() {
-    let container = document.getElementById('phasesContainer');
-    let template = document.getElementById('phaseRowTemplate');
-    let row = template.cloneNode(true);
-    row.id = "";
-    row.classList.remove('d-none');
-
-    // Clear values
-    row.querySelectorAll('input').forEach(input => input.value = '');
-    row.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+// Wait for DOM to be fully loaded
+document.addEventListener('DOMContentLoaded', function() {
     
-    // Hide custom days container and attach onChange handler
-    const customDaysContainer = row.querySelector('.custom-days-container');
-    if (customDaysContainer) {
-        customDaysContainer.style.display = 'none';
+    // Add/remove plot rows
+    document.getElementById('addPlotBtn').addEventListener('click', function() {
+        let container = document.getElementById('plotsContainer');
+        let template = document.getElementById('plotRowTemplate');
+        let row = template.cloneNode(true);
+        row.id = "";
+        row.classList.remove('d-none');
+        row.querySelectorAll('input').forEach(input => input.value = '');
+        container.appendChild(row);
+    });
+
+    document.getElementById('plotsContainer').addEventListener('click', function(e) {
+        if (e.target.classList.contains('removePlotBtn')) {
+            e.target.closest('.plot-row').remove();
+        }
+    });
+
+    // Toggle custom days input visibility
+    function toggleCustomDays(selectElement) {
+        const row = selectElement.closest('.phase-row');
+        const container = row.querySelector('.custom-days-container');
+        const input = container.querySelector('.phase-custom-days');
+        
+        if (selectElement.value === 'custom') {
+            container.style.display = 'block';
+            input.required = true;
+        } else {
+            container.style.display = 'none';
+            input.required = false;
+            input.value = '';
+        }
     }
-    const dueSelect = row.querySelector('.phase-due-select');
-    if (dueSelect) {
+
+    // Add event listeners to all due selects on page load
+    document.querySelectorAll('.phase-due-select').forEach(select => {
+        select.addEventListener('change', function() {
+            toggleCustomDays(this);
+        });
+    });
+
+    // Add/remove highlight rows
+    document.getElementById('addHighlightBtn').addEventListener('click', function() {
+        let container = document.getElementById('highlightsContainer');
+        let template = document.getElementById('highlightRowTemplate');
+        let row = template.cloneNode(true);
+        row.id = "";
+        row.classList.remove('d-none');
+        row.querySelectorAll('input').forEach(input => input.value = '');
+        container.appendChild(row);
+    });
+
+    document.getElementById('highlightsContainer').addEventListener('click', function(e) {
+        if (e.target.classList.contains('removeHighlightBtn')) {
+            e.target.closest('.highlight-row').remove();
+        }
+    });
+
+    // Add phase row
+    document.getElementById('addPhaseBtn').addEventListener('click', function() {
+        let container = document.getElementById('phasesContainer');
+        let template = document.getElementById('phaseRowTemplate');
+        let row = template.cloneNode(true);
+        row.id = "";
+        row.classList.remove('d-none');
+
+        // Clear values
+        row.querySelectorAll('input').forEach(input => input.value = '');
+        row.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+        
+        // Hide custom days container
+        const customDaysContainer = row.querySelector('.custom-days-container');
+        customDaysContainer.style.display = 'none';
+        
+        // Add change event listener to due select
+        const dueSelect = row.querySelector('.phase-due-select');
         dueSelect.addEventListener('change', function() {
             toggleCustomDays(this);
         });
-    }
 
-    container.appendChild(row);
-});
+        container.appendChild(row);
+    });
 
-document.getElementById('phasesContainer').addEventListener('click', function(e) {
-    if (e.target.classList.contains('removePhaseBtn')) {
-        let rows = document.querySelectorAll('.phase-row');
-        if (rows.length > 1) {
-            e.target.closest('.phase-row').remove();
-        } else {
-            alert("At least one payment phase is required.");
-        }
-    }
-});
-
-// ==================== Excel Import for Plots ====================
-let excelPlotsData = [];
-let isExcelImport = false;
-
-document.getElementById('previewExcelBtn').addEventListener('click', function() {
-    const fileInput = document.getElementById('plotExcelFile');
-    if (!fileInput.files || !fileInput.files[0]) {
-        alert('Please select an Excel file first');
-        return;
-    }
-
-    const file = fileInput.files[0];
-    const reader = new FileReader();
-
-    reader.onload = function(e) {
-        try {
-            // Parse Excel file
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const rows = XLSX.utils.sheet_to_json(worksheet);
-
-            if (rows.length === 0) {
-                alert('Excel file is empty');
-                return;
+    document.getElementById('phasesContainer').addEventListener('click', function(e) {
+        if (e.target.classList.contains('removePhaseBtn')) {
+            let rows = document.querySelectorAll('.phase-row');
+            if (rows.length > 1) {
+                e.target.closest('.phase-row').remove();
+            } else {
+                alert("At least one payment phase is required.");
             }
-
-            // Validate and display data
-            excelPlotsData = [];
-            const previewBody = document.querySelector('#plotPreviewTable tbody');
-            previewBody.innerHTML = '';
-
-            rows.forEach((row, idx) => {
-                const plotNo = String(row.plot_no || '').trim();
-                if (plotNo) {
-                    const plotData = {
-                        plot_no: plotNo,
-                        size: String(row.size || '').trim(),
-                        area_sq: parseFloat(row.area_sq) || 0,
-                        price: String(row.price || '').trim(),
-                        type: String(row.type || 'residential').toLowerCase()
-                    };
-                    excelPlotsData.push(plotData);
-
-                    // Add row to preview table
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${plotData.plot_no}</td>
-                        <td>${plotData.size}</td>
-                        <td>${plotData.area_sq}</td>
-                        <td>${plotData.price}</td>
-                        <td><span class="badge bg-info">${plotData.type}</span></td>
-                    `;
-                    previewBody.appendChild(tr);
-                }
-            });
-
-            if (excelPlotsData.length === 0) {
-                alert('No valid plots found in Excel');
-                return;
-            }
-
-            // Show preview
-            document.getElementById('excelPreviewTable').style.display = 'block';
-            window.scrollTo(0, document.getElementById('excelImportSection').offsetTop - 100);
-        } catch (error) {
-            alert('Error reading Excel: ' + error.message);
-            console.error(error);
         }
-    };
+    });
 
-    reader.readAsArrayBuffer(file);
-});
-
-document.getElementById('confirmExcelImportBtn').addEventListener('click', function() {
-    if (confirm('This will replace ALL existing plots with the Excel data. Continue?')) {
-        isExcelImport = true;
-        
-        // Clear existing plot rows
-        const container = document.getElementById('plotsContainer');
-        const plotRows = container.querySelectorAll('.plot-row:not(.d-none)');
-        plotRows.forEach(row => row.remove());
-
-        // Add Excel data as hidden form fields
-        const form = document.querySelector('form');
-        
-        // Clear any existing hidden plot inputs
-        const existingHiddenInputs = form.querySelectorAll('input[name="excel_plot_data[]"]');
-        existingHiddenInputs.forEach(input => input.remove());
-
-        // Add hidden inputs for Excel data
-        excelPlotsData.forEach((plot, idx) => {
-            const hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.name = 'excel_plot_data[]';
-            hiddenInput.value = JSON.stringify(plot);
-            form.appendChild(hiddenInput);
-        });
-
-        // Add flag to indicate Excel import
-        const excelImportFlag = document.createElement('input');
-        excelImportFlag.type = 'hidden';
-        excelImportFlag.name = 'is_excel_import';
-        excelImportFlag.value = 'true';
-        form.appendChild(excelImportFlag);
-
-        // Hide preview and show success message
-        document.getElementById('excelPreviewTable').style.display = 'none';
-        document.getElementById('excelImportSection').classList.remove('show');
-        
-        // Show toast
-        Toastify({
-            text: `✅ ${excelPlotsData.length} plots ready to import. Click 'Update Project' to confirm.`,
-            duration: 3000,
-            gravity: "top",
-            position: "right",
-            backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
-        }).showToast();
-    }
-});
-
-document.getElementById('cancelExcelImportBtn').addEventListener('click', function() {
-    document.getElementById('excelPreviewTable').style.display = 'none';
-    document.getElementById('plotExcelFile').value = '';
-    excelPlotsData = [];
-    isExcelImport = false;
+    // ==================== END: Manual plots management ====================
 });
 </script>
 
 {% if toast_message %}
 <script>
-Toastify({
-    text: "{{ toast_message }}",
-    duration: 3000,
-    gravity: "top",
-    position: "right",
-    close: true,
-    backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
-}).showToast();
+if (typeof Toastify !== 'undefined') {
+    Toastify({
+        text: "{{ toast_message }}",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        close: true,
+        backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+    }).showToast();
+} else {
+    alert("{{ toast_message }}");
+}
 </script>
 {% endif %}
 

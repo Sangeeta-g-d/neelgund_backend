@@ -374,31 +374,75 @@ def agent_detail(request, agent_id):
     }
     return render(request, 'agent_detail.html', context)
 
-@login_required_nocache
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.utils import timezone
+import json
+import logging
+
+logger = logging.getLogger(__name__)
+
 def edit_project(request, project_id):
+    """
+    Edit an existing real estate project with all related data including plots,
+    payment phases, highlights, and amenities.
+    """
     project = get_object_or_404(RealEstateProject, pk=project_id)
-    amenities = Amenity.objects.all()
+    amenities = Amenity.objects.all().order_by('name')
     toast_message = None
 
     if request.method == "POST":
         data = request.POST
         files = request.FILES
+        excel_data = None
+        
+        # ✅ Step 1: Read Excel/CSV if uploaded
+        excel_file = files.get("inventory_excel")
+        if excel_file:
+            try:
+                file_ext = os.path.splitext(excel_file.name)[1].lower()
+                if file_ext in [".xlsx", ".xls", ".csv"]:
+                    if file_ext == ".xlsx":
+                        df = pd.read_excel(excel_file, engine="openpyxl")
+                    elif file_ext == ".xls":
+                        df = pd.read_excel(excel_file, engine="xlrd")
+                    else:
+                        df = pd.read_csv(excel_file)
+                    excel_data = df.to_dict(orient="records")
+                else:
+                    raise ValueError("Unsupported file format.")
+            except Exception as e:
+                return render(request, "edit_project.html", {
+                    "project": project,
+                    "amenities": amenities,
+                    'toast_message': f"❌ Invalid inventory file: {e}"
+                })
 
         try:
             with transaction.atomic():
                 # Store old phase for comparison
                 old_phase_id = project.current_phase_id
-                print(f"\n🔍 OLD PHASE ID: {old_phase_id}")
                 
                 # 1️⃣ Update main project details
-                project.project_id = data.get("project_id")
-                project.project_name = data.get("project_name")
-                project.location = data.get("location")
-                project.project_type = data.get("project_type")
-                project.description = data.get("description")
-                project.total_plots = data.get("total_plots") or 0
-                project.status = data.get("status")
-                project.commission_percentage = data.get("commission_percentage") or 0
+                project.project_id = data.get("project_id", "").strip()
+                project.project_name = data.get("project_name", "").strip()
+                project.location = data.get("location", "").strip()
+                project.project_type = data.get("project_type", "")
+                project.description = data.get("description", "").strip()
+                
+                # Handle numeric fields
+                try:
+                    project.total_plots = int(data.get("total_plots", 0))
+                except (ValueError, TypeError):
+                    project.total_plots = 0
+                    
+                project.status = data.get("status", "")
+                
+                try:
+                    project.commission_percentage = float(data.get("commission_percentage", 0))
+                except (ValueError, TypeError):
+                    project.commission_percentage = 0
 
                 # 🖼 Update files if uploaded
                 if files.get("banner_image"):
@@ -410,31 +454,48 @@ def edit_project(request, project_id):
 
                 project.save()
 
-                # 2️⃣ Update amenities
-                project.amenities.set(data.getlist("amenities"))
+                # 2️⃣ Update amenities (Many-to-Many)
+                amenity_ids = data.getlist("amenities")
+                if amenity_ids:
+                    project.amenities.set(amenity_ids)
+                else:
+                    project.amenities.clear()
 
                 # 3️⃣ Update highlights
                 highlight_ids = data.getlist("highlight_id[]")
                 highlight_titles = data.getlist("highlight_title[]")
                 highlight_subtitles = data.getlist("highlight_subtitle[]")
 
-                existing_ids = []
-                for h_id, title, subtitle in zip(highlight_ids, highlight_titles, highlight_subtitles):
-                    if title.strip():
-                        if h_id:
-                            highlight = ProjectHighlight.objects.get(id=h_id)
-                            highlight.title = title.strip()
-                            highlight.subtitle = subtitle.strip() if subtitle else None
-                            highlight.save()
-                            existing_ids.append(highlight.id)
+                existing_highlight_ids = []
+                for idx, (h_id, title, subtitle) in enumerate(zip(highlight_ids, highlight_titles, highlight_subtitles)):
+                    if title and title.strip():
+                        if h_id and h_id.strip():
+                            # Update existing highlight
+                            try:
+                                highlight = ProjectHighlight.objects.get(id=h_id)
+                                highlight.title = title.strip()
+                                highlight.subtitle = subtitle.strip() if subtitle and subtitle.strip() else None
+                                highlight.save()
+                                existing_highlight_ids.append(highlight.id)
+                            except ProjectHighlight.DoesNotExist:
+                                # Create new if ID doesn't exist
+                                new_h = ProjectHighlight.objects.create(
+                                    project=project,
+                                    title=title.strip(),
+                                    subtitle=subtitle.strip() if subtitle and subtitle.strip() else None
+                                )
+                                existing_highlight_ids.append(new_h.id)
                         else:
+                            # Create new highlight
                             new_h = ProjectHighlight.objects.create(
                                 project=project,
                                 title=title.strip(),
-                                subtitle=subtitle.strip() if subtitle else None
+                                subtitle=subtitle.strip() if subtitle and subtitle.strip() else None
                             )
-                            existing_ids.append(new_h.id)
-                project.highlights.exclude(id__in=existing_ids).delete()
+                            existing_highlight_ids.append(new_h.id)
+                
+                # Delete highlights that were removed
+                project.highlights.exclude(id__in=existing_highlight_ids).delete()
 
                 # 4️⃣ Update payment phases
                 phase_ids = data.getlist("phase_id[]")
@@ -445,8 +506,12 @@ def edit_project(request, project_id):
                 phase_custom_days = data.getlist("phase_custom_days[]")
 
                 existing_phase_ids = []
-                for idx, (p_id, activity, percentage, payment_type, due, custom_days) in enumerate(zip(phase_ids, phase_activities, phase_percentages, phase_payment_types, phase_dues, phase_custom_days), start=1):
-                    if activity.strip():
+                for idx, (p_id, activity, percentage, payment_type, due, custom_days) in enumerate(zip(
+                    phase_ids, phase_activities, phase_percentages, phase_payment_types, phase_dues, phase_custom_days
+                ), start=1):
+                    
+                    if activity and activity.strip():
+                        # Parse custom days if applicable
                         custom_duration_days = None
                         if due == 'custom' and custom_days:
                             try:
@@ -454,21 +519,42 @@ def edit_project(request, project_id):
                             except (ValueError, TypeError):
                                 custom_duration_days = None
 
-                        if p_id:
-                            phase = ProjectPaymentPhase.objects.get(id=p_id)
-                            phase.activity = activity.strip()
-                            phase.payment_percentage = percentage or 0
-                            phase.payment_type = payment_type or 'phase_wise'
-                            phase.due = due
-                            phase.custom_duration_days = custom_duration_days
-                            phase.order = idx
-                            phase.save()
-                            existing_phase_ids.append(phase.id)
+                        # Parse percentage
+                        try:
+                            percentage_value = float(percentage) if percentage else 0
+                        except (ValueError, TypeError):
+                            percentage_value = 0
+
+                        if p_id and p_id.strip():
+                            # Update existing phase
+                            try:
+                                phase = ProjectPaymentPhase.objects.get(id=p_id, project=project)
+                                phase.activity = activity.strip()
+                                phase.payment_percentage = percentage_value
+                                phase.payment_type = payment_type or 'phase_wise'
+                                phase.due = due
+                                phase.custom_duration_days = custom_duration_days
+                                phase.order = idx
+                                phase.save()
+                                existing_phase_ids.append(phase.id)
+                            except ProjectPaymentPhase.DoesNotExist:
+                                # Create new if ID doesn't exist
+                                new_phase = ProjectPaymentPhase.objects.create(
+                                    project=project,
+                                    activity=activity.strip(),
+                                    payment_percentage=percentage_value,
+                                    payment_type=payment_type or 'phase_wise',
+                                    due=due,
+                                    custom_duration_days=custom_duration_days,
+                                    order=idx
+                                )
+                                existing_phase_ids.append(new_phase.id)
                         else:
+                            # Create new phase
                             new_phase = ProjectPaymentPhase.objects.create(
                                 project=project,
                                 activity=activity.strip(),
-                                payment_percentage=percentage or 0,
+                                payment_percentage=percentage_value,
                                 payment_type=payment_type or 'phase_wise',
                                 due=due,
                                 custom_duration_days=custom_duration_days,
@@ -476,130 +562,145 @@ def edit_project(request, project_id):
                             )
                             existing_phase_ids.append(new_phase.id)
 
+                # Delete phases that were removed
                 project.payment_phases.exclude(id__in=existing_phase_ids).delete()
 
                 # 5️⃣ Update current phase
                 new_phase_id = data.get("current_phase")
-                print(f"🔍 NEW PHASE ID: {new_phase_id}")
-                
                 phase_changed = False
-                if new_phase_id:
-                    project.current_phase_id = new_phase_id
-                    # Check if phase actually changed
-                    if str(old_phase_id) != str(new_phase_id):
-                        phase_changed = True
-                        print("✅ PHASE CHANGED!")
+                
+                if new_phase_id and new_phase_id.strip():
+                    try:
+                        new_phase = ProjectPaymentPhase.objects.get(id=new_phase_id, project=project)
+                        if project.current_phase != new_phase:
+                            phase_changed = True
+                        project.current_phase = new_phase
+                    except ProjectPaymentPhase.DoesNotExist:
+                        if project.current_phase is not None:
+                            phase_changed = True
+                        project.current_phase = None
                 else:
-                    if old_phase_id is not None:
+                    if project.current_phase is not None:
                         phase_changed = True
-                        print("✅ PHASE CLEARED!")
                     project.current_phase = None
                 
                 project.save()
 
-                # 6️⃣ Update plots
-                is_excel_import = data.get("is_excel_import") == "true"
-                
-                if is_excel_import:
-                    # Delete all existing plots and import from Excel data
+                # 6️⃣ Update plots - Check for Excel import
+                if excel_data:
+                    # Delete all existing plots and replace with Excel data
                     project.plots.all().delete()
                     
-                    excel_plot_data = data.getlist("excel_plot_data[]")
-                    for plot_json in excel_plot_data:
-                        try:
-                            import json
-                            plot_data = json.loads(plot_json)
+                    for row in excel_data:
+                        plot_no = str(row.get("plot_no") or "").strip()
+                        if plot_no:
                             PlotInventory.objects.create(
                                 project=project,
-                                plot_no=plot_data.get('plot_no', ''),
-                                size=plot_data.get('size', ''),
-                                area_sq=plot_data.get('area_sq', 0),
-                                price=plot_data.get('price', ''),
-                                type=plot_data.get('type', 'residential'),
-                                is_available=True
+                                plot_no=plot_no,
+                                size=str(row.get("size") or "").strip(),
+                                area_sq=row.get("area_sq") or 0,
+                                price=str(row.get("price") or "").strip(),
+                                type=str(row.get("type") or "residential").lower(),
+                                is_available=True,
                             )
-                        except Exception as e:
-                            print(f"Error importing plot from Excel: {e}")
+                
                 else:
-                    # Manual plot update (existing logic)
+                    # Manual plot update
                     plot_ids = data.getlist("plot_id[]")
                     plot_nos = data.getlist("plot_no[]")
                     sizes = data.getlist("size[]")
                     areas = data.getlist("area_sq[]")
                     prices = data.getlist("price[]")
                     plot_types = data.getlist("plot_type[]")
-
+                    
                     existing_plot_ids = []
-                    for p_id, p_no, size, area, price, plot_type in zip(plot_ids, plot_nos, sizes, areas, prices, plot_types):
-                        if p_no.strip():
-                            if p_id:
-                                plot = PlotInventory.objects.get(id=p_id)
-                                plot.plot_no = p_no
-                                plot.size = size
-                                plot.area_sq = area or 0
-                                plot.price = price
-                                plot.type = plot_type or 'residential'
-                                plot.save()
-                                existing_plot_ids.append(plot.id)
+                    
+                    for p_id, p_no, size, area, price, plot_type in zip(
+                        plot_ids, plot_nos, sizes, areas, prices, plot_types
+                    ):
+                        if p_no and p_no.strip():
+                            # Parse area
+                            try:
+                                area_value = float(area) if area else 0
+                            except (ValueError, TypeError):
+                                area_value = 0
+                            
+                            if p_id and p_id.strip():
+                                # Update existing plot
+                                try:
+                                    plot = PlotInventory.objects.get(id=p_id, project=project)
+                                    plot.plot_no = p_no.strip()
+                                    plot.size = size.strip() if size else ''
+                                    plot.area_sq = area_value
+                                    plot.price = price.strip() if price else ''
+                                    plot.type = plot_type or 'residential'
+                                    plot.save()
+                                    existing_plot_ids.append(plot.id)
+                                except PlotInventory.DoesNotExist:
+                                    # Create new plot
+                                    new_plot = PlotInventory.objects.create(
+                                        project=project,
+                                        plot_no=p_no.strip(),
+                                        size=size.strip() if size else '',
+                                        area_sq=area_value,
+                                        price=price.strip() if price else '',
+                                        type=plot_type or 'residential',
+                                        is_available=True
+                                    )
+                                    existing_plot_ids.append(new_plot.id)
                             else:
+                                # Create new plot
                                 new_plot = PlotInventory.objects.create(
                                     project=project,
-                                    plot_no=p_no,
-                                    size=size,
-                                    area_sq=area or 0,
-                                    price=price,
+                                    plot_no=p_no.strip(),
+                                    size=size.strip() if size else '',
+                                    area_sq=area_value,
+                                    price=price.strip() if price else '',
                                     type=plot_type or 'residential',
                                     is_available=True
                                 )
                                 existing_plot_ids.append(new_plot.id)
+                    
+                    # Delete plots that were removed
                     project.plots.exclude(id__in=existing_plot_ids).delete()
 
                 toast_message = "✅ Project updated successfully!"
 
-            # 🔔 Send notification if phase changed
-            if phase_changed:
-                print("\n🔔 PHASE CHANGED - SENDING NOTIFICATIONS TO ALL AGENTS")
-                try:
-                    # Get the new phase details
-                    if project.current_phase:
-                        phase_name = project.current_phase.activity
-                        notification_title = "📢 Project Phase Updated"
-                        notification_body = f"{project.project_name} has moved to phase: {phase_name}"
-                        notification_data = {
-                            "type": "project_phase_update",
-                            "project_id": str(project.id),
-                            "project_name": project.project_name,
-                            "phase_id": str(project.current_phase.id),
-                            "phase_name": phase_name,
-                            "updated_at": timezone.now().isoformat(),
-                        }
-                    else:
-                        notification_title = "📢 Project Phase Cleared"
-                        notification_body = f"{project.project_name} phase has been cleared/reset"
-                        notification_data = {
-                            "type": "project_phase_cleared",
-                            "project_id": str(project.id),
-                            "project_name": project.project_name,
-                            "updated_at": timezone.now().isoformat(),
-                        }
-                    
-                    send_fcm_notification_to_all_agents(
-                        title=notification_title,
-                        body=notification_body,
-                        data=notification_data
-                    )
-                    print("✅ Notifications sent successfully")
-                    
-                except Exception as e:
-                    print(f"❌ ERROR sending notifications: {type(e).__name__} - {str(e)}")
-                    logger.error(f"Failed to send phase update notifications: {str(e)}")
-                    # Don't fail the entire update if notification fails
-            else:
-                print("ℹ️  Phase not changed - skipping notifications")
+                # 🔔 Send notification if phase changed
+                if phase_changed:
+                    try:
+                        if project.current_phase:
+                            notification_title = "📢 Project Phase Updated"
+                            notification_body = f"{project.project_name} has moved to phase: {project.current_phase.activity}"
+                            notification_data = {
+                                "type": "project_phase_update",
+                                "project_id": str(project.id),
+                                "project_name": project.project_name,
+                                "phase_id": str(project.current_phase.id),
+                                "phase_name": project.current_phase.activity,
+                                "updated_at": timezone.now().isoformat(),
+                            }
+                        else:
+                            notification_title = "📢 Project Phase Cleared"
+                            notification_body = f"{project.project_name} phase has been cleared/reset"
+                            notification_data = {
+                                "type": "project_phase_cleared",
+                                "project_id": str(project.id),
+                                "project_name": project.project_name,
+                                "updated_at": timezone.now().isoformat(),
+                            }
+                        
+                        # Send FCM notifications
+                        send_fcm_notification_to_all_agents(
+                            title=notification_title,
+                            body=notification_body,
+                            data=notification_data
+                        )
+                    except Exception as e:
+                        print(f"Error sending notifications: {str(e)}")
 
         except Exception as e:
-            print("Error updating project:", e)
-            toast_message = f"❌ Failed to update project: {e}"
+            toast_message = f"❌ Failed to update project: {str(e)}"
 
         return render(request, "edit_project.html", {
             "project": project,
@@ -607,11 +708,11 @@ def edit_project(request, project_id):
             "toast_message": toast_message
         })
 
+    # GET request - display the form
     return render(request, "edit_project.html", {
         "project": project,
         "amenities": amenities
     })
-
 
 @transaction.atomic
 def delete_project(request, project_id):
