@@ -1293,13 +1293,59 @@ class AddWithdrawalRequestAPIView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # ✅ Step 3: Calculate total available withdrawable amount for this agent
+        from datetime import timedelta
+        
         commissions = AgentCommission.objects.filter(agent=user)
-        total_withdrawable = sum((c.available_for_withdrawal for c in commissions), Decimal('0'))
+        
+        # Update maturity for all commissions first, then calculate totals
+        total_withdrawable = Decimal('0')
+        total_pending = Decimal('0')
+        earliest_maturity_date = None
+        
+        for commission in commissions:
+            # Ensure maturity status is updated (moves withdrawable → matured after 30 days)
+            commission.update_maturity()
+            
+            # After maturity update, available = matured_amount - already_withdrawn
+            available = commission.matured_amount - commission.withdrawn_amount
+            total_withdrawable += max(Decimal('0'), available)
+            
+            # Calculate pending (not yet matured)
+            pending = commission.withdrawable_amount - commission.matured_amount
+            total_pending += max(Decimal('0'), pending)
+            
+            # Calculate maturity date for this commission (30 days from creation)
+            if pending > 0:
+                maturity_date = commission.created_at + timedelta(days=30)
+                if earliest_maturity_date is None or maturity_date < earliest_maturity_date:
+                    earliest_maturity_date = maturity_date
 
         if amount > total_withdrawable:
+            # Build detailed error message
+            from django.utils import timezone
+            ist = pytz.timezone('Asia/Kolkata')
+            
+            error_message = (
+                f"Requested amount exceeds matured withdrawable balance. "
+                f"Available now: ₹{total_withdrawable:.2f}"
+            )
+            
+            # Add pending amount info if there's any
+            if total_pending > 0:
+                error_message += f", Pending (not matured): ₹{total_pending:.2f}"
+                
+                # Add maturity date if available
+                if earliest_maturity_date:
+                    maturity_ist = earliest_maturity_date.astimezone(ist)
+                    maturity_str = maturity_ist.strftime('%d-%m-%Y at %I:%M %p')
+                    days_until = (earliest_maturity_date - timezone.now()).days
+                    error_message += f". Funds will mature on {maturity_str} (in {max(0, days_until)} days)"
+            else:
+                error_message += ". Your earned commissions are ready for withdrawal once all payment phases are completed."
+            
             return Response({
                 "status": "error",
-                "message": f"Requested amount exceeds withdrawable balance. Available: ₹{total_withdrawable}"
+                "message": error_message
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # ✅ Step 4: Create withdrawal request (pending approval)

@@ -419,7 +419,7 @@ class AgentCommission(models.Model):
         from django.utils import timezone
         from datetime import timedelta
 
-        maturity_date = self.created_at + timedelta(days=1)
+        maturity_date = self.created_at + timedelta(days=30)
 
         if timezone.now() >= maturity_date:
             pending = self.withdrawable_amount - self.matured_amount
