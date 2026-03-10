@@ -36,6 +36,7 @@
       </p>
       
       <!-- Payment Method Selector -->
+      {% if can_change_payment_method %}
       <div class="card bg-light mb-4 border-1">
         <div class="card-body">
           <label for="paymentMethodSelector" class="form-label fw-bold mb-3">
@@ -68,6 +69,34 @@
           </small>
         </div>
       </div>
+      {% else %}
+      <div class="card bg-danger bg-opacity-10 mb-4 border-danger border-2">
+        <div class="card-body">
+          <div class="d-flex align-items-start gap-3">
+            <div>
+              <i class="bi bi-lock-fill text-danger" style="font-size: 1.5rem;"></i>
+            </div>
+            <div>
+              <h5 class="card-title text-danger mb-2">
+                <i class="bi bi-exclamation-triangle me-2"></i>Payment Method is Locked
+              </h5>
+              <p class="card-text text-dark mb-2">
+                <strong>Current Payment Method:</strong> 
+                <span class="badge {% if payment_method == 'full_payment' %}bg-warning{% else %}bg-info{% endif %}">
+                  {% if payment_method == 'full_payment' %}💰 Full Payment{% else %}📋 Phase Wise Payment{% endif %}
+                </span>
+              </p>
+              <p class="card-text mb-0">
+                <small class="text-muted">
+                  ⚠️ Payment method cannot be changed because <strong>{{ total_paid|floatformat:2 }}</strong> has already been paid. 
+                  Lock this assignment to prevent accidental modifications.
+                </small>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
       <hr>
 
       <form method="POST" id="paymentForm">

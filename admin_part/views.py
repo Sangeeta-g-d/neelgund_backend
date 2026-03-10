@@ -1076,6 +1076,11 @@ def lead_plot_detail(request, assignment_id):
         for phase in phases
     }
 
+    # ✅ Check if any payments have been made (paid = True)
+    # If yes, don't allow changing payment method
+    any_payment_made = any(p.paid for p in existing_payments.values())
+    can_change_payment_method = not any_payment_made
+
     context = {
         'assignment': assignment,
         'lead': lead,
@@ -1090,6 +1095,7 @@ def lead_plot_detail(request, assignment_id):
         'phase_balance_dict': phase_balance_dict,
         'current_phase': current_phase,
         'payment_method': payment_method,
+        'can_change_payment_method': can_change_payment_method,
     }
 
     return render(request, 'lead_plot_detail.html', context)    
