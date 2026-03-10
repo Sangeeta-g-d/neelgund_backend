@@ -100,12 +100,6 @@
               </tr>
             </thead>
             <tbody>
-              {% empty %}
-              <tr>
-                <td colspan="9" class="text-center text-muted py-4">
-                  <i class="bi bi-inbox"></i> No payment phases available for this payment type
-                </td>
-              </tr>
               {% for phase in phases %}
               {% with existing_payments|get_item:phase.id as payment %}
               <tr class="{% if payment and payment.paid %}table-success opacity-50{% endif %}">
@@ -149,6 +143,12 @@
                 </td>
               </tr>
               {% endwith %}
+              {% empty %}
+              <tr>
+                <td colspan="9" class="text-center text-muted py-4">
+                  <i class="bi bi-inbox"></i> No payment phases available for this payment type
+                </td>
+              </tr>
               {% endfor %}
             </tbody>
            <tfoot class="table-light">
