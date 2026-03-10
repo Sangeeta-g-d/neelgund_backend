@@ -34,29 +34,90 @@
           {% if payment_method == 'full_payment' %}Full Payment{% else %}Phase Wise Payment{% endif %}
         </span>
       </p>
+      
+      <!-- Payment Method Selector -->
+      <div class="card bg-light mb-4 border-1">
+        <div class="card-body">
+          <label for="paymentMethodSelector" class="form-label fw-bold mb-3">
+            <i class="bi bi-credit-card me-2"></i>Change Payment Method
+          </label>
+          <div class="row align-items-center">
+            <div class="col-md-6">
+              <select id="paymentMethodSelector" class="form-select form-select-lg" onchange="updatePaymentMethod()">
+                <option value="phase_wise" {% if payment_method == 'phase_wise' %}selected{% endif %}>
+                  📋 Phase Wise Payment
+                </option>
+                <option value="full_payment" {% if payment_method == 'full_payment' %}selected{% endif %}>
+                  💰 Full Payment
+                </option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <button type="button" class="btn btn-primary w-100" onclick="submitPaymentMethodChange()">
+                <i class="bi bi-check-circle me-2"></i>Update Payment Method
+              </button>
+            </div>
+          </div>
+          <small class="text-muted d-block mt-2">
+            <i class="bi bi-info-circle"></i>
+            {% if payment_method == 'phase_wise' %}
+              Showing <strong>Phase Wise Payment</strong> phases - Payment will be tracked by phases
+            {% else %}
+              Showing <strong>Full Payment</strong> phases - Complete payment required upfront
+            {% endif %}
+          </small>
+        </div>
+      </div>
       <hr>
 
-      <form method="POST">
+      <form method="POST" id="paymentForm">
         {% csrf_token %}
+        <input type="hidden" id="paymentMethodField" name="payment_method" value="{{ payment_method }}">
+        
+        <div class="alert alert-info" role="alert">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>Current Payment Type:</strong>
+          {% if payment_method == 'full_payment' %}
+            <span class="badge bg-warning">💰 Full Payment</span> - Showing phases that require full payment upfront
+          {% else %}
+            <span class="badge bg-info">📋 Phase Wise Payment</span> - Showing phases with payment schedule
+          {% endif %}
+        </div>
+        
         <div class="table-responsive">
           <table class="table table-hover align-middle">
             <thead class="table-light">
               <tr>
                 <th>Phase</th>
+                <th>Type</th>
                 <th>Payment %</th>
                 <th>Auto Amount (₹)</th>
                 <th>Due</th>
                 <th>Remarks</th>
                 <th>Bill Number</th>
                 <th>Paid?</th>
-                <th>Next Balance (₹)</th> <!-- ✅ -->
+                <th>Balance (₹)</th>
               </tr>
             </thead>
             <tbody>
+              {% empty %}
+              <tr>
+                <td colspan="9" class="text-center text-muted py-4">
+                  <i class="bi bi-inbox"></i> No payment phases available for this payment type
+                </td>
+              </tr>
               {% for phase in phases %}
               {% with existing_payments|get_item:phase.id as payment %}
-              <tr>
-                <td>{{ phase.activity }}</td>
+              <tr class="{% if payment and payment.paid %}table-success opacity-50{% endif %}">
+                <td>
+                  <strong>{{ phase.activity }}</strong>
+                  {% if payment and payment.paid %}<i class="bi bi-check-circle text-success ms-2"></i>{% endif %}
+                </td>
+                <td>
+                  <span class="badge {% if phase.payment_type == 'full_payment' %}bg-warning{% else %}bg-info{% endif %}">
+                    {% if phase.payment_type == 'full_payment' %}💰 Full{% else %}📋 Phase{% endif %}
+                  </span>
+                </td>
                 <td>{{ phase.payment_percentage }}%</td>
                 <td>
                   {% with calc=plot_price|mul:phase.payment_percentage|div:100 %}
@@ -93,7 +154,7 @@
            <tfoot class="table-light">
   {% if next_phase %}
 <tr>
-  <th colspan="7" class="text-end">
+  <th colspan="8" class="text-end">
     Next Payment ({{ next_phase.activity }})
     {% if current_phase %}
       <small class="text-muted">[Current Phase: {{ current_phase.activity }}]</small>
@@ -103,11 +164,11 @@
 </tr>
 {% endif %}
   <tr>
-    <th colspan="7" class="text-end">Total Paid</th>
+    <th colspan="8" class="text-end">Total Paid</th>
     <th class="text-primary">₹{{ total_paid|floatformat:2 }}</th>
   </tr>
   <tr>
-    <th colspan="7" class="text-end">Total Balance</th>
+    <th colspan="8" class="text-end">Total Balance</th>
     <th class="text-danger">₹{{ total_balance|floatformat:2 }}</th>
   </tr>
 </tfoot>
@@ -124,5 +185,69 @@
     </div>
   </div>
 </div>
+
+<script>
+  // Update payment method and reload the page
+  function submitPaymentMethodChange() {
+    const selectedMethod = document.getElementById('paymentMethodSelector').value;
+    const currentMethod = '{{ payment_method }}';
+    
+    if (selectedMethod === currentMethod) {
+      alert('Please select a different payment method.');
+      return;
+    }
+    
+    // Update the hidden field
+    document.getElementById('paymentMethodField').value = selectedMethod;
+    
+    // Show confirmation dialog
+    const methodText = selectedMethod === 'full_payment' ? 'Full Payment' : 'Phase Wise Payment';
+    if (confirm(`Switch to ${methodText} payment method? This will reload the page with the updated payment phases.`)) {
+      // Create a form to submit with the payment method
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = window.location.href;
+      
+      // Add CSRF token
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      const csrfInput = document.createElement('input');
+      csrfInput.type = 'hidden';
+      csrfInput.name = 'csrfmiddlewaretoken';
+      csrfInput.value = csrfToken;
+      form.appendChild(csrfInput);
+      
+      // Add payment method
+      const methodInput = document.createElement('input');
+      methodInput.type = 'hidden';
+      methodInput.name = 'payment_method_change_only';
+      methodInput.value = selectedMethod;
+      form.appendChild(methodInput);
+      
+      const methodField = document.createElement('input');
+      methodField.type = 'hidden';
+      methodField.name = 'payment_method';
+      methodField.value = selectedMethod;
+      form.appendChild(methodField);
+      
+      document.body.appendChild(form);
+      form.submit();
+    } else {
+      // Reset dropdown to current method
+      document.getElementById('paymentMethodSelector').value = currentMethod;
+    }
+  }
+  
+  // Simple update function for clarity
+  function updatePaymentMethod() {
+    const selectedMethod = document.getElementById('paymentMethodSelector').value;
+    const currentMethod = '{{ payment_method }}';
+    const methodText = selectedMethod === 'full_payment' ? '💰 Full Payment' : '📋 Phase Wise Payment';
+    
+    // Update the badge in real-time (optional visual feedback)
+    if (selectedMethod === currentMethod) {
+      // No change needed
+    }
+  }
+</script>
 
 {% endblock %}

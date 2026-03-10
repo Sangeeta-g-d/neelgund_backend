@@ -983,6 +983,30 @@ def lead_plot_detail(request, assignment_id):
 
     # --- Handle POST (Form Submission)
     if request.method == 'POST':
+        # ✅ Check if payment method is being changed
+        new_payment_method = request.POST.get('payment_method_change_only') or request.POST.get('payment_method')
+        
+        if new_payment_method and new_payment_method in ['phase_wise', 'full_payment']:
+            # Update the assignment's payment method
+            assignment.payment_method = new_payment_method
+            assignment.save()
+            payment_method = new_payment_method
+            
+            # Reload phases based on new payment method
+            if payment_method == 'full_payment':
+                phases = ProjectPaymentPhase.objects.filter(
+                    project=project,
+                    payment_type='full_payment'
+                ).order_by('order')
+            else:
+                phases = ProjectPaymentPhase.objects.filter(
+                    project=project,
+                    payment_type='phase_wise'
+                ).order_by('order')
+            
+            messages.success(request, f"Payment method changed to {'Full Payment' if payment_method == 'full_payment' else 'Phase Wise Payment'}!")
+            return redirect('lead_plot_detail', assignment_id=assignment.id)
+        
         try:
             with transaction.atomic():
                 for phase in phases:
